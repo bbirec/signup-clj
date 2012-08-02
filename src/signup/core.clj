@@ -104,24 +104,39 @@
 (defpartial error-item [[first-error]]
   [:span {:class "help-inline"} first-error])
 
+
+(defpartial with-form [& body]
+  [:form {:method "post" :class "form-horizontal"}
+   [:fieldset
+    body]])
+
+
+(defpartial form-buttons [& {:keys [submit-button reset-button]
+                             :or {submit-button "Submit" reset-button "Reset"}}]
+  [:div {:class "form-actions"}
+   [:button {:type "submit" :class "btn btn-primary"} submit-button]
+   [:button {:class "btn" :type "reset"} reset-button]])
+
+(defpartial with-form-element [title error-keyword & body]
+  [:div {:class (if (vali/get-errors error-keyword)
+                  "control-group error"
+                  "control-group")}
+   [:label {:class "control-label"} title]
+   [:div {:class "controls"}
+    body (vali/on-error (keyword name) error-item)]])
+  
+(defpartial form-element [title type name value]
+  (with-form-element title (keyword name)
+    (cond (= type :string) [:input {:type "text" :name name :value value}]
+          (= type :password) [:input {:type "password" :name name :value value}]
+          (= type :text) [:textarea {:name name} value]
+          (= type :json) [:textarea {:name name} value])))
+
+
 (defn make-form [elements button-text]
-  (html
-   [:form {:method "post" :class "form-horizontal"}
-    [:fieldset
-     (for [[title type name value] elements]
-       [:div {:class (if (vali/get-errors (keyword name))
-                       "control-group error"
-                       "control-group")}
-        [:label {:class "control-label"} title]
-        [:div {:class "controls"}
-         (cond (= type :string) [:input {:type "text" :name name :value value}]
-               (= type :password) [:input {:type "password" :name name :value value}]
-               (= type :text) [:textarea {:name name} value]
-               (= type :json) [:textarea {:name name} value])
-         (vali/on-error (keyword name) error-item)]])
-     [:div {:class "form-actions"}
-      [:button {:type "submit" :class "btn btn-primary"} button-text]
-      [:button {:class "btn"} "Cancel"]]]]))
+  (with-form
+    (for [[title type name value] elements] (form-element title type name value))
+    (if button-text (form-buttons :submit-button button-text))))
 
 
 
@@ -136,16 +151,27 @@
                 ["Final Message" :text "final" final]]
                "Create Signup Form")]))
 
+
+
 (defpartial signup-view [{:keys [title desc info slot final book]}]
+  (let [info (if (empty? info) [] (read-json info))
+        slot (if (empty? slot) [] (read-json slot))]
   (base
    [:div {:class "well"}
-    [:h1 title]
-    [:p "Required Information"]
-    [:p info]
-    [:p "Slots"]
-    [:p slot]]))
-
-  
+    (with-form
+      [:h1 title]
+      [:p desc]
+      [:h2 "Required Information"]
+      (for [[title name]
+            (map #(list %1 (str "info_" %2)) info (range (count info)))]
+        (form-element title :string name ""))
+      
+      [:h2 "Slots"]
+      (with-form-element "Available slots" :slot
+        (for [[title limit value]
+              (map #(conj %1 (str %2)) slot (range (count slot)))]
+          [:div [:input {:type "radio" :name "slot" :value value} title]]))
+      (form-buttons :submit-button "Sign Up"))])))
 
 
 (defn valid? [{:keys [title desc info slot final]}]
@@ -173,8 +199,14 @@
 (defpage [:get ["/:sheet-key"]] {:keys [sheet-key]}
   (let [sheet (ds/retrieve Sheet sheet-key)]
     (if sheet
-      (signup-view {:title "Title is here"})
+      (signup-view {:title "Title is here"
+                    :desc "This is a test signup form for users"
+                    :info "[\"Group name\", \"Phone number\"]"
+                    :slot "[[\"5 PM ~ 6 PM\", 1], [\"6 PM ~ 7 PM\", 2]]"})
       (str "Invalid sheet key: " sheet-key))))
+
+(defpage [:post "/:sheet-key"] {:as param}
+  (base "Hooray!" (str param)))
   
 ;;;;;;;;;;;  
   

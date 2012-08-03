@@ -32,9 +32,13 @@
 
 ;; Server logic
 
+(defn get-key [length]
+  (apply str
+         (take length
+               (repeatedly #(rand-nth "1234567890")))))
 
 ;; Model definition
-(ds/defentity Sheet [title, desc, end-msg, data, slot, book, created-time, modified-time])
+(ds/defentity Sheet [^:key code, title, desc, end-msg, data, slot, book, created-time, modified-time])
 
 (defmacro defmodel [name properties]
   `(ds/defentity ~name [~@(map (fn [p]
@@ -42,7 +46,7 @@
                                properties)]))
                                    
 (defmodel Shoot
-  [[^:Key title "Title" :string]
+  [[^:key title "Title" :string]
    [desc "Description" :text]
    [end-msg "Congraturation Message" :text]
    [data "Information" :json [:string]]
@@ -51,8 +55,10 @@
    [created-time "Created Time" :created-time]
    [modified-time "Modified Time" :modified-time]])
 
+
+
 (defn add-sheet []
-  (ds/save! (Shoot. "title" "Desc" "Endmsg" nil nil nil 1 2)))
+  (ds/save! (Sheet. (get-key 5) "title" "Desc" "Endmsg" nil nil nil 1 2)))
 
 
 (defpartial base [& body]

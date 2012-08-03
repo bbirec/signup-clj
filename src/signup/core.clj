@@ -28,17 +28,22 @@
   [:div {:class "container"} body])
 
 
-
-
 ;; Server logic
 
-(defn get-key [length]
+(defn gen-key [length]
   (apply str
          (take length
                (repeatedly #(rand-nth "1234567890")))))
 
 ;; Model definition
-(ds/defentity Sheet [^:key code, title, desc, end-msg, data, slot, book, created-time, modified-time])
+(ds/defentity Sheet [^:key code, title, desc, final, info, slot, book, created-time])
+
+(defn entity-to-map
+  [e]
+  (if e
+    (zipmap (keys e) (vals e))
+    nil))
+
 
 (defmacro defmodel [name properties]
   `(ds/defentity ~name [~@(map (fn [p]
@@ -57,8 +62,6 @@
 
 
 
-(defn add-sheet []
-  (ds/save! (Sheet. (get-key 5) "title" "Desc" "Endmsg" nil nil nil 1 2)))
 
 
 (defpartial base [& body]
@@ -118,9 +121,10 @@
 
 
 
-(defpartial signup-view [{:keys [title desc info slot final book]}]
+(defpartial signup-view [{:keys [title desc final info slot book]}]
   (let [info (if (empty? info) [] (read-json info))
-        slot (if (empty? slot) [] (read-json slot))]
+        slot (if (empty? slot) [] (read-json slot))
+        book (if (empty? book) [] (read-json book))]
   (base
    [:div {:class "well"}
     (with-form
@@ -143,7 +147,7 @@
     json))
 
     
-(defn valid? [{:keys [title desc info slot final]}]
+(defn valid? [{:keys [title desc final info slot]}]
   (vali/rule (vali/has-value? title)
              [:title "You must have title"])
   (vali/rule (vali/has-value? desc)
@@ -157,6 +161,11 @@
   (not (vali/errors? :title :desc :final)))
 
 
+(defn add-sheet [{:keys [title desc final info slot]}]
+  (let [key (gen-key 5)]
+    (ds/save! (Sheet. key title desc final info slot nil (java.util.Date.)))
+    key))
+  
 
 
 ;; Page Routing
@@ -166,17 +175,16 @@
 
 (defpage [:post "/"] {:as param}
   (if (valid? param)
-    (do (add-sheet)
-        (base [:div "Your signup form is created."]))
+    (do (let [key (add-sheet param)]
+          (base [:div
+                 [:h1 "Your signup form is created."]
+                 [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
     (render "/" param)))
 
 (defpage [:get ["/:sheet-key"]] {:keys [sheet-key]}
   (let [sheet (ds/retrieve Sheet sheet-key)]
     (if sheet
-      (signup-view {:title "Title is here"
-                    :desc "This is a test signup form for users"
-                    :info "[\"Group name\", \"Phone number\"]"
-                    :slot "[[\"5 PM ~ 6 PM\", 1], [\"6 PM ~ 7 PM\", 2]]"})
+      (signup-view (entity-to-map sheet))
       (str "Invalid sheet key: " sheet-key))))
 
 (defpage [:post "/:sheet-key"] {:as param}

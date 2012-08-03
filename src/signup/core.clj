@@ -37,13 +37,12 @@
 (ds/defentity Sheet [title, desc, end-msg, data, slot, book, created-time, modified-time])
 
 (defmacro defmodel [name properties]
-  `(ds/defentity ~name [^:key
-                        ~@(map (fn [p]
+  `(ds/defentity ~name [~@(map (fn [p]
                                  (let [name (first p)] name))
                                properties)]))
                                    
-(defmodel sheet
-  [[title "Title" :string]
+(defmodel Shoot
+  [[^:Key title "Title" :string]
    [desc "Description" :text]
    [end-msg "Congraturation Message" :text]
    [data "Information" :json [:string]]
@@ -53,48 +52,8 @@
    [modified-time "Modified Time" :modified-time]])
 
 (defn add-sheet []
-  (ds/save! (Sheet. "title" "Desc" "Endmsg" nil nil nil 1 2)))
+  (ds/save! (Shoot. "title" "Desc" "Endmsg" nil nil nil 1 2)))
 
-;; View definition
-
-(defmacro defview [name models & body])
-
-
-
-(defmacro render-view [view models]
-  `"")
-
-
-(defn show [model property &rest rest])
-
-(defview add-sheet [sheet]
-  [:h2 "Make Your SignUp Form"]
-  (show sheet :title)
-  (show sheet :desc)
-  [:p "Information"]
-  
-  [:p "Slot"]
-  
-  (show sheet :end-msg)
-  (save-button))
-
-
-(defview list-sheet [sheet]
-  [:tr
-   [:td (show sheet :title)]
-   [:td (show sheet :desc)]
-   [:td (show sheet :created-time)]])
-
-
-(defpartial list-sheet-table [cursor]
-  ;; Getting the sheets from ds
-  (if (= cursor nil) [:p "Empty cursor"] [:p cursor])
-  
-  [:table {:border "1"}
-   [:tr
-    [:td "Title"] [:td "Description"] [:td "Created Time"]]
-   (render-view list-sheet model)])
-  
 
 (defpartial base [& body]
   (layout "SignUp Website"
@@ -123,7 +82,7 @@
                   "control-group")}
    [:label {:class "control-label"} title]
    [:div {:class "controls"}
-    body (vali/on-error (keyword name) error-item)]])
+    body (vali/on-error error-keyword error-item)]])
   
 (defpartial form-element [title type name value]
   (with-form-element title (keyword name)
@@ -173,7 +132,11 @@
           [:div [:input {:type "radio" :name "slot" :value value} title]]))
       (form-buttons :submit-button "Sign Up"))])))
 
+(defn valid-json [json-str]
+  (let [json (try (read-json json-str) (catch Exception e nil))]
+    json))
 
+    
 (defn valid? [{:keys [title desc info slot final]}]
   (vali/rule (vali/has-value? title)
              [:title "You must have title"])
@@ -181,7 +144,12 @@
              [:desc "You must describe your signup form"])
   (vali/rule (vali/has-value? final)
              [:final "You must set your final message"])
+  (vali/rule (valid-json info)
+             [:info "Invalid information definition"])
+  (vali/rule (valid-json slot)
+             [:slot "Invalid slot definition"])
   (not (vali/errors? :title :desc :final)))
+
 
 
 
@@ -219,10 +187,6 @@
 (defpage "/error" []
   {:status 500
    :body "Oh no!"})
-
-(defpage [:get ["/list"] ["/list:cursor"]] {:keys [cursor]}
-  (base (list-sheet-table cursor)))
-
 
 
 ;; Registering the handler

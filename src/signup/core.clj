@@ -44,6 +44,14 @@
     (zipmap (keys e) (vals e))
     nil))
 
+(defn sheet-entity [e]
+  "Transform the sheet entity to the map structure with parsed json"
+  (let [em (entity-to-map e)]
+    (reduce #(assoc %1 %2 (if (empty? (em %2))
+                            [] (read-json (em %2))))
+            em
+            [:info :slot :book])))
+
 
 (defmacro defmodel [name properties]
   `(ds/defentity ~name [~@(map (fn [p]
@@ -106,18 +114,19 @@
     (for [[title type name value] elements] (form-element title type name value))
     (if button-text (form-buttons :submit-button button-text))))
 
-
-
-(defpartial main-page [{:keys [title desc info slot final]}]
-  (base
-   [:h1 "Make your signup form"]
-   [:div {:class "well"}
+(defn signup-form [button-text {:keys [title desc info slot final]}]
+  [:div {:class "well"}
     (make-form [["Title" :string "title" title]
                 ["Description" :text "desc" desc]
                 ["Information" :json "info" info]
                 ["Slot" :json "slot" slot]
                 ["Final Message" :text "final" final]]
-               "Create Signup Form")]))
+               button-text)])
+
+(defpartial main-page [param]
+  (base
+   [:h1 "Make your signup form"]
+   (signup-form "Create Signup Form" param)))
 
 
 
@@ -168,6 +177,7 @@
   
 
 
+
 ;; Page Routing
 
 (defpage "/" [:as param]
@@ -181,15 +191,84 @@
                  [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
     (render "/" param)))
 
+(defn get-sheet [sheet-key]
+  (ds/retrieve Sheet sheet-key))
+
 (defpage [:get ["/:sheet-key"]] {:keys [sheet-key]}
-  (let [sheet (ds/retrieve Sheet sheet-key)]
+  (let [sheet (get-sheet sheet-key)]
     (if sheet
       (signup-view (entity-to-map sheet))
       (str "Invalid sheet key: " sheet-key))))
 
 (defpage [:post "/:sheet-key"] {:as param}
   (base "Hooray!" (str param)))
+
+(defn get-sheets []
+  (ds/query :kind Sheet
+            :sort [[:created-time :dsc]]))
   
+
+(defpage [:get ["/user/:user-id"]] {:keys [user-id]}
+  (base
+   [:div "Hi, " user-id]
+   [:div
+    [:table {:class "table table-striped"}
+     [:thead
+      [:tr
+       [:th "URL"]
+       [:th "Title"]
+       [:th "# of Slots"]
+       [:th "Progress"]
+       [:th "Created time"]
+       [:th "Manage"]]]
+     [:tbody
+      (for [sheet (get-sheets)]
+        (let [entity (sheet-entity sheet)]
+          [:tr
+           [:td [:a {:href (str "/" (entity :code))} (entity :code)]]
+           [:td (entity :title)]
+           [:td (str (count (entity :slot)))]
+           [:td (str 0)]
+           [:td "Now"]
+           [:td [:a {:href (str "/manage/" (entity :code))} "Manage"]]]))]]]))
+
+
+(defpartial view-book-table [{:keys [info slot book]}]
+  [:table {:class "table table-striped"}
+   [:thead
+    [:tr [:th "Slot"] (for [i info] [:th i]) [:th "Delete"]]]
+   [:tbody
+    (for [[title limit books] (map #(conj %1 %2) slot book)]
+      (if (empty? books)
+        [:tr [:td title]] ;; Empty booking
+        (for [book books]
+          [:tr
+           ;; Slot
+           (if (= (first books) book)
+             [:td {:rowspan (str (count books))} title])
+            
+           (for [b book] [:td b])
+
+           [:td [:button {:class "btn btn-danger"} "Delete"]]])))]])
+
+
+(defn vector-nil [n]
+  (apply vector (take n (repeat nil))))
+
+(defpage [:get ["/manage/:sheet-key"]] {:keys [sheet-key]}
+  (let [sheet (get-sheet sheet-key)]
+    (if sheet
+      (let [sm (sheet-entity sheet)]
+        (base
+         [:h1 "Status"]
+         [:div (view-book-table
+                (assoc sm :book ;(vector-nil (count (sm :slot)))
+                       [nil [["Heehong" "010"] ["Eunbee" "010"]]]))]
+         [:h1 "Edit Form"]
+         (signup-form "Edit" sheet)))
+
+      (str "Sorry"))))
+
 ;;;;;;;;;;;  
   
 (defpage [:post "/login"] {:keys [username password]}

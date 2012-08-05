@@ -52,6 +52,17 @@
             em
             [:info :slot :book])))
 
+(defn get-sheet [sheet-key]
+  (ds/retrieve Sheet sheet-key))
+
+
+(defn get-sheet-by-key [k]
+  (let [e (get-sheet k)]
+    (if e
+      (sheet-entity e)
+      nil)))
+    
+
 
 (defmacro defmodel [name properties]
   `(ds/defentity ~name [~@(map (fn [p]
@@ -130,10 +141,8 @@
 
 
 
-(defpartial signup-view [{:keys [title desc final info slot book]}]
-  (let [info (if (empty? info) [] (read-json info))
-        slot (if (empty? slot) [] (read-json slot))
-        book (if (empty? book) [] (read-json book))]
+(defpartial signup-view [{:keys [title desc final info slot book]}
+                         param]
   (base
    [:div {:class "well"}
     (with-form
@@ -141,15 +150,24 @@
       [:p desc]
       [:h2 "Required Information"]
       (for [[title name]
-            (map #(list %1 (str "info_" %2)) info (range (count info)))]
-        (form-element title :string name ""))
+            (map #(list %1 (str "info_" %2))
+                 info (range (count info)))]
+        (form-element title :string name (get param (keyword name))))
       
       [:h2 "Slots"]
       (with-form-element "Available slots" :slot
-        (for [[title limit value]
-              (map #(conj %1 (str %2)) slot (range (count slot)))]
-          [:div [:input {:type "radio" :name "slot" :value value} title]]))
-      (form-buttons :submit-button "Sign Up"))])))
+        (for [[title limit value checked]
+              (map #(conj (conj %1 (str %2))
+                          (if (empty? (param :slot)) false
+                              (= %2 (Integer/parseInt (param :slot)))))
+                   slot (range (count slot)))]
+          [:div
+           [:input
+            (if checked
+              {:type "radio" :name "slot" :value value :checked "checked"}
+              {:type "radio" :name "slot" :value value})
+            title]]))
+      (form-buttons :submit-button "Sign Up"))]))
 
 (defn valid-json [json-str]
   (let [json (try (read-json json-str) (catch Exception e nil))]
@@ -199,17 +217,48 @@
                  [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
     (render "/" param)))
 
-(defn get-sheet [sheet-key]
-  (ds/retrieve Sheet sheet-key))
 
-(defpage [:get ["/:sheet-key"]] {:keys [sheet-key]}
-  (let [sheet (get-sheet sheet-key)]
+(defpage "/:sheet-key" {:keys [sheet-key] :as param}
+  (let [sheet (get-sheet-by-key sheet-key)]
     (if sheet
-      (signup-view (entity-to-map sheet))
+      (signup-view sheet param)
       (str "Invalid sheet key: " sheet-key))))
 
-(defpage [:post "/:sheet-key"] {:as param}
-  (base "Hooray!" (str param)))
+(defpartial signed-up-view [{:keys [slot final]} param]
+  (base
+   [:div {:class "well"}
+    [:h1 "Congraturation!"]
+    [:p "You signed up for "
+     (let [slot-num (Integer/parseInt (param :slot))]
+       (first (nth slot slot-num)))]
+    [:p final]]))
+
+(defn is-int-str? [s]
+  (if (empty? s) nil
+      (re-matches #"[0-9]+" s)))
+
+(defn valid-signup? [info {:keys [slot] :as param}]
+  (let [keys (map #(keyword (str "info_" %1)) (range (count info)))]
+    
+    (vali/rule (is-int-str? slot)
+               [:slot "You should check one of available slots."])
+
+    (doseq [key keys]
+      (vali/rule (vali/has-value? (get param key))
+                 [key "Fill this blank"]))
+    
+    (not (apply vali/errors? :slot keys))))
+
+
+
+
+(defpage [:post "/:sheet-key"] {:keys [sheet-key] :as param}
+  (let [sheet (get-sheet-by-key sheet-key)]
+    (if sheet
+      (if (valid-signup? (sheet :info) param)
+        (signed-up-view sheet param)
+        (render "/:sheet-key" param))
+      (str "Invalid sheet key: " sheet-key))))
 
 (defn get-sheets []
   (ds/query :kind Sheet
@@ -264,16 +313,17 @@
   (apply vector (take n (repeat nil))))
 
 (defpage "/manage/:sheet-key" {:keys [sheet-key]}
-  (let [sheet (get-sheet sheet-key)]
+  (let [sheet (get-sheet sheet-key)
+        parsed-sheet (sheet-entity sheet)]
     (if sheet
-      (let [sm (sheet-entity sheet)]
-        (base
-         [:h1 "Status"]
-         [:div (view-book-table
-                (assoc sm :book ;(vector-nil (count (sm :slot)))
-                       [nil [["Heehong" "010"] ["Eunbee" "010"]]]))]
-         [:h1 "Edit Form"]
-         (signup-form "Edit" sheet)))
+      (base
+       [:h1 "Status"]
+       [:div (view-book-table
+              (assoc parsed-sheet :book      ;(vector-nil (count (sm :slot)))
+                     [nil [["Heehong" "010"] ["Eunbee" "010"]]]))]
+       [:h1 "Edit Form"]
+       (signup-form "Edit" sheet)
+      )
 
       (str "Sorry"))))
 

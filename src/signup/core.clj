@@ -167,7 +167,7 @@
              [:info "Invalid information definition"])
   (vali/rule (valid-json slot)
              [:slot "Invalid slot definition"])
-  (not (vali/errors? :title :desc :final)))
+  (not (vali/errors? :title :desc :final :info :slot)))
 
 
 (defn add-sheet [{:keys [title desc final info slot]}]
@@ -175,7 +175,15 @@
     (ds/save! (Sheet. key title desc final info slot nil (java.util.Date.)))
     key))
   
-
+(defn modify-sheet [sheet-key new-values]
+  (ds/with-transaction
+    (let [e (get-sheet sheet-key)]
+      (if e
+        (do
+          (ds/save! (merge e new-values))
+          (get e :code))
+        nil))))
+    
 
 
 ;; Page Routing
@@ -255,7 +263,7 @@
 (defn vector-nil [n]
   (apply vector (take n (repeat nil))))
 
-(defpage [:get ["/manage/:sheet-key"]] {:keys [sheet-key]}
+(defpage "/manage/:sheet-key" {:keys [sheet-key]}
   (let [sheet (get-sheet sheet-key)]
     (if sheet
       (let [sm (sheet-entity sheet)]
@@ -269,9 +277,19 @@
 
       (str "Sorry"))))
 
+(defpage [:post ["/manage/:sheet-key"]] {:keys [sheet-key] :as param}
+  (if (valid? param)
+    (let [key (modify-sheet sheet-key param)]
+      (if key
+        (base [:div
+               [:h1 "Signup form is modified"]
+               [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])
+        (str "Sorry")))
+    (render "/manage/:sheet-key" param)))
+
 ;;;;;;;;;;;  
   
-(defpage [:post "/login"] {:keys [username password]}
+(defpage "/login" {:keys [username password]}
   (str "Logging in as " username " with the password " password))
 
 (defpage [:get ["/login/:id" :id #"\d+"]] {:keys [id]}

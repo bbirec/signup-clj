@@ -29,13 +29,22 @@
     (zipmap (keys e) (vals e))
     nil))
 
+(defn validate-book [book slot-size]
+  (let [diff (- slot-size (count book))]
+    (if (> diff 0)
+      (vec (concat book (vec-nil diff)))
+      book)))
+
+
 (defn sheet-entity [e]
   "Transform the sheet entity to the map structure with parsed json"
   (let [em (entity-to-map e)]
-    (reduce #(assoc %1 %2 (if (empty? (em %2))
-                            [] (read-json (em %2))))
-            em
-            [:info :slot :book])))
+    (let [sheet (reduce #(assoc %1 %2 (if (empty? (em %2))
+                                        [] (read-json (em %2))))
+                        em
+                        [:info :slot :book])]
+      (assoc sheet :book
+             (validate-book (sheet :book) (count (sheet :slot)))))))
 
 (defn get-sheet [sheet-key]
   (ds/retrieve Sheet sheet-key))
@@ -166,11 +175,6 @@
     
     (not (apply vali/errors? :slot keys))))
 
-(defn validate-book [book slot-size]
-  (let [diff (- slot-size (count book))]
-    (if (> diff 0)
-      (concat book (vec-nil diff))
-      book)))
 
 (defn save-book [entity book]
   (let [book-string (json-str book)]
@@ -277,12 +281,10 @@
    [:thead
     [:tr [:th "Slot"] (for [i info] [:th i]) [:th "Delete"]]]
    [:tbody
-    (prn book)
-    (prn (validate-book book (count slot)))
     (for [[title limit books slot-idx]
           (map #(conj %1 %2 %3)
                slot
-               (validate-book book (count slot))
+               book
                (range (count slot)))]
       (if (empty? books)
         [:tr [:td title]] ;; Empty booking

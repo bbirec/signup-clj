@@ -26,6 +26,10 @@
           ""
           (container body)))
 
+(defpartial error-view [title & body]
+  (base [:div {:class "well"}
+         [:h1 title]
+         [:div body]]))
 
 ;; Form
 

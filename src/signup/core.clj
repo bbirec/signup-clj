@@ -55,10 +55,17 @@
       (sheet-entity e)
       nil)))
 
-(defmacro with-sheet [key [entity map] & body]
-  `(let [~entity (get-sheet ~key)
-         ~map (sheet-entity ~entity)]
-     ~@body))
+(defmacro with-sheet
+  ([key [entity map] then else]
+     `(if-let [~entity (get-sheet ~key)]
+        (if-let [~map (sheet-entity ~entity)]
+          ~then
+          ~else)
+        ~else))
+  ([key [entity map] then]
+     `(with-sheet ~key [~entity ~map] ~then
+        (error-view "Not found signup form" [:p "Please check again"]))))
+
 
     
 ;; Make signup form
@@ -146,14 +153,9 @@
     (ds/save! (Sheet. key title desc final info slot empty-book (java.util.Date.)))
     key))
   
-(defn modify-sheet [sheet-key new-values]
-  (ds/with-transaction
-    (let [e (get-sheet sheet-key)]
-      (if e
-        (do
-          (ds/save! (merge e new-values))
-          (get e :code))
-        nil))))
+(defn modify-sheet [entity new-values]
+  (ds/save! (merge entity new-values)))
+
     
 ;; Booking
 
@@ -238,9 +240,8 @@
 
 (defpage "/:sheet-key" {:keys [sheet-key] :as param}
   (with-sheet sheet-key [entity sheet]
-    (if sheet
-      (signup-view sheet param)
-      (str "Invalid sheet key: " sheet-key))))
+    (signup-view sheet param)))
+
 
 
     
@@ -248,15 +249,15 @@
 (defpage [:post "/:sheet-key"] {:keys [sheet-key] :as param}
   (ds/with-transaction 
     (with-sheet sheet-key [entity sheet]
-      (if entity
-        (if (valid-signup? sheet param)
-          (let [slot-idx (Integer/parseInt (param :slot))]
-            (if (has-room? sheet slot-idx)
+      (if (valid-signup? sheet param)
+        (let [slot-idx (Integer/parseInt (param :slot))]
+          (if (has-room? sheet slot-idx)
               (do (add-book entity sheet param slot-idx)
-                (signed-up-view sheet param))
-              (str "There is no room.")))
-          (render "/:sheet-key" param))
-        (str "Invalid sheet key: " sheet-key)))))
+                  (signed-up-view sheet param))
+              (error-view "The slot is full"
+                          "Please select another slot.")))
+        (render "/:sheet-key" param)))))
+
 
   
 
@@ -318,37 +319,35 @@
 
 (defpage "/manage/:sheet-key" {:keys [sheet-key]}
   (with-sheet sheet-key [entity sheet]
-    (if sheet
-      (base
-       [:h1 "Status"]
-       [:div (view-book-table sheet)]
-       [:h1 "Edit Form"]
-       (signup-form "Edit" entity)
-      )
+    (base
+     [:h1 "Status"]
+     [:div (view-book-table sheet)]
+     [:h1 "Edit Form"]
+     (signup-form "Edit" entity))))
 
-      (str "Sorry"))))
+(defpartial signup-modified-view [code]
+  (base [:div {:class "well"}
+         [:h1 "Signup form is modified"]
+         [:p "Signup form : "
+          [:a {:href (str "/" code)} "here"]]]))
 
 (defpage [:post ["/manage/:sheet-key"]] {:keys [sheet-key] :as param}
   (if (valid? param)
-    (let [key (modify-sheet sheet-key param)]
-      (if key
-        (base [:div
-               [:h1 "Signup form is modified"]
-               [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])
-        (str "Sorry")))
+    (ds/with-transaction
+      (with-sheet sheet-key [entity sheet]
+        (do (modify-sheet entity param)
+            (signup-modified-view (sheet :code)))))
     (render "/manage/:sheet-key" param)))
-
 
 
 (defpage "/manage/:sheet-key/delete" {:keys [sheet-key slot-idx book-idx]}
   (ds/with-transaction
     (with-sheet sheet-key [entity sheet]
-      (if entity
-        (do (delete-book entity sheet (Integer/parseInt slot-idx) (Integer/parseInt book-idx))
-            (redirect (str "/manage/" sheet-key)))
-        (str "Not found")))))
-
-  
+      (do (delete-book entity
+                       sheet
+                       (Integer/parseInt slot-idx)
+                       (Integer/parseInt book-idx))
+          (redirect (str "/manage/" sheet-key))))))  
 
 ;;;;;;;;;;;  
   

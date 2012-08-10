@@ -55,13 +55,16 @@
 (defn get-sheet [sheet-key]
   (ds/retrieve Sheet sheet-key))
 
-
 (defn get-sheet-by-key [k]
   (let [e (get-sheet k)]
     (if e
       (sheet-entity e)
       nil)))
     
+(defmacro with-sheet [key [entity map] & body]
+  `(let [~entity (get-sheet ~key)
+         ~map (sheet-entity ~entity)]
+     ~@body))
 
 
 (defmacro defmodel [name properties]
@@ -219,7 +222,7 @@
 
 
 (defpage "/:sheet-key" {:keys [sheet-key] :as param}
-  (let [sheet (get-sheet-by-key sheet-key)]
+  (with-sheet sheet-key [entity sheet]
     (if sheet
       (signup-view sheet param)
       (str "Invalid sheet key: " sheet-key))))
@@ -251,20 +254,36 @@
     
     (not (apply vali/errors? :slot keys))))
 
-(defn add-book [sheet param]
-  (let [keys (get-info-keys sheet)
-        values (for [k keys] (param k))]))
-    
-    
 
+
+(defn add-book [entity sheet param slot-idx]
+  (let [keys (get-info-keys sheet)
+        values (for [k keys] (param k))
+        old-book (sheet :book)
+        slot (conj (get old-book slot-idx) values)
+        new-book (assoc old-book slot-idx slot)
+        new-book-string (json-str new-book)]
+    
+    (ds/save! (assoc entity :book new-book-string))))
+
+(defn has-room? [sheet slot-idx]
+  (let [limit (second (get (sheet :slot) slot-idx))
+        current (count (get (sheet :book) slot-idx))]
+    (< current limit)))
+    
 
 (defpage [:post "/:sheet-key"] {:keys [sheet-key] :as param}
-  (let [sheet (get-sheet-by-key sheet-key)]
-    (if sheet
-      (if (valid-signup? sheet param)
-        (signed-up-view sheet param)
-        (render "/:sheet-key" param))
-      (str "Invalid sheet key: " sheet-key))))
+  (ds/with-transaction 
+    (with-sheet sheet-key [entity sheet]
+      (if entity
+        (if (valid-signup? sheet param)
+          (let [slot-idx (Integer/parseInt (param :slot))]
+            (if (has-room? sheet slot-idx)
+              (do (add-book entity sheet param slot-idx)
+                (signed-up-view sheet param))
+              (str "There is no room.")))
+          (render "/:sheet-key" param))
+        (str "Invalid sheet key: " sheet-key)))))
 
 (defn get-sheets []
   (ds/query :kind Sheet
@@ -296,39 +315,45 @@
            [:td [:a {:href (str "/manage/" (entity :code))} "Manage"]]]))]]]))
 
 
-(defpartial view-book-table [{:keys [info slot book]}]
+(defpartial view-book-table [{:keys [info slot book code]}]
   [:table {:class "table table-striped"}
    [:thead
     [:tr [:th "Slot"] (for [i info] [:th i]) [:th "Delete"]]]
    [:tbody
-    (for [[title limit books] (map #(conj %1 %2) slot book)]
+    (for [[title limit books slot-idx]
+          (map #(conj %1 %2 %3)
+               slot
+               book
+               (range (count slot)))]
       (if (empty? books)
         [:tr [:td title]] ;; Empty booking
-        (for [book books]
+        (for [[book book-idx] (map #(vector %1 %2) books (range (count books)))]
           [:tr
            ;; Slot
-           (if (= (first books) book)
+           (if (identical? (first books) book)
              [:td {:rowspan (str (count books))} title])
             
            (for [b book] [:td b])
 
-           [:td [:button {:class "btn btn-danger"} "Delete"]]])))]])
+           [:td [:a {:class "btn btn-danger"
+                     :href
+                     (str "/manage/"
+                          code
+                          "/delete?slot-idx="
+                          slot-idx
+                          "&book-idx="
+                          book-idx)} "Delete"]]])))]])
 
 
-(defn vector-nil [n]
-  (apply vector (take n (repeat nil))))
 
 (defpage "/manage/:sheet-key" {:keys [sheet-key]}
-  (let [sheet (get-sheet sheet-key)
-        parsed-sheet (sheet-entity sheet)]
+  (with-sheet sheet-key [entity sheet]
     (if sheet
       (base
        [:h1 "Status"]
-       [:div (view-book-table
-              (assoc parsed-sheet :book      ;(vector-nil (count (sm :slot)))
-                     [nil [["Heehong" "010"] ["Eunbee" "010"]]]))]
+       [:div (view-book-table sheet)]
        [:h1 "Edit Form"]
-       (signup-form "Edit" sheet)
+       (signup-form "Edit" entity)
       )
 
       (str "Sorry"))))
@@ -342,6 +367,19 @@
                [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])
         (str "Sorry")))
     (render "/manage/:sheet-key" param)))
+
+(defn delete-book [entity sheet])
+ 
+
+(defpage "/manage/:sheet-key/delete" {:keys [sheet-key slot-idx book-idx]}
+  (ds/with-transaction
+    (with-sheet sheet-key [entity sheet]
+      (if entity
+        (do (delete-book entity sheet)
+            "YES")
+        (str "Not found")))))
+
+  
 
 ;;;;;;;;;;;  
   

@@ -95,16 +95,25 @@
       
       [:h2 "Slots"]
       (with-form-element "Available slots" :slot
-        (for [[title limit value checked]
-              (map #(conj (conj %1 (str %2))
+        (for [[title limit value checked disabled]
+              (map #(conj %1
+                          (str %2)
                           (if (empty? (param :slot)) false
-                              (= %2 (Integer/parseInt (param :slot)))))
-                   slot (range (count slot)))]
+                              (= %2 (Integer/parseInt (param :slot))))
+                          (<= (second %1) (count %3)))
+                   slot
+                   (range (count slot))
+                   book)]
           [:div
            [:input
-            (if checked
-              {:type "radio" :name "slot" :value value :checked "checked"}
-              {:type "radio" :name "slot" :value value})
+            (let [prop {:type "radio" :name "slot" :value value}
+                  prop-check (if checked
+                               (assoc prop :checked "checked")
+                               prop)
+                  prop-disable (if disabled
+                                 (assoc prop-check :disabled "disabled")
+                                 prop-check)]
+              prop-disable)
             title]]))
       (form-buttons :submit-button "Sign Up"))]))
 
@@ -268,7 +277,7 @@
       (for [sheet (get-sheets)]
         (let [entity (sheet-entity sheet)]
           [:tr
-           [:td [:a {:href (str "/" (entity :code))} (entity :code)]]
+           [:td [:a {:href (str "/" (entity :code)) :target "_blank"} (entity :code)]]
            [:td (entity :title)]
            [:td (str (count (entity :slot)))]
            [:td (str 0)]

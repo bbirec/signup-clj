@@ -237,9 +237,11 @@
   (if (empty? s) nil
       (re-matches #"[0-9]+" s)))
 
-(defn valid-signup? [info {:keys [slot] :as param}]
-  (let [keys (map #(keyword (str "info_" %1)) (range (count info)))]
-    
+(defn get-info-keys [sheet]
+  (map #(keyword (str "info_" %1)) (range (count (sheet :info)))))
+
+(defn valid-signup? [sheet {:keys [slot] :as param}]
+  (let [keys (get-info-keys sheet)]
     (vali/rule (is-int-str? slot)
                [:slot "You should check one of available slots."])
 
@@ -249,13 +251,17 @@
     
     (not (apply vali/errors? :slot keys))))
 
-
+(defn add-book [sheet param]
+  (let [keys (get-info-keys sheet)
+        values (for [k keys] (param k))]))
+    
+    
 
 
 (defpage [:post "/:sheet-key"] {:keys [sheet-key] :as param}
   (let [sheet (get-sheet-by-key sheet-key)]
     (if sheet
-      (if (valid-signup? (sheet :info) param)
+      (if (valid-signup? sheet param)
         (signed-up-view sheet param)
         (render "/:sheet-key" param))
       (str "Invalid sheet key: " sheet-key))))

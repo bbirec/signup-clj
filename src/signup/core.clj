@@ -1,4 +1,5 @@
 (ns signup.core
+  (:use signup.view)
   (:use [noir.core :only (defpage defpartial render)])
   (:use [noir.response :only (redirect)])
   (:use [clojure.data.json :only (read-json json-str)])
@@ -10,31 +11,14 @@
   (:use [hiccup.page-helpers]))
 
 
-;; Client HTML
-(defpartial layout [title head body]
-  (html5
-   [:head
-    [:meta {:charset "utf-8"}]
-    [:title title]
-    ;; JQuery
-    (include-js "https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js")
-    ;; Bootstrap
-    (include-css "/assets/css/bootstrap.css")
-    (include-css "/assets/css/bootstrap-responsive.css")
-    head]
-   [:body
-    body]))
-
-(defpartial container [& body]
-  [:div {:class "container"} body])
-
-
 ;; Server logic
 
 (defn gen-key [length]
   (apply str
          (take length
                (repeatedly #(rand-nth "1234567890")))))
+
+
 
 ;; Model definition
 (ds/defentity Sheet [^:key code, title, desc, final, info, slot, book, created-time])
@@ -61,73 +45,14 @@
     (if e
       (sheet-entity e)
       nil)))
-    
+
 (defmacro with-sheet [key [entity map] & body]
   `(let [~entity (get-sheet ~key)
          ~map (sheet-entity ~entity)]
      ~@body))
 
-
-(defmacro defmodel [name properties]
-  `(ds/defentity ~name [~@(map (fn [p]
-                                 (let [name (first p)] name))
-                               properties)]))
-                                   
-(defmodel Shoot
-  [[^:key title "Title" :string]
-   [desc "Description" :text]
-   [end-msg "Congraturation Message" :text]
-   [data "Information" :json [:string]]
-   [slot "Slot" :json [:string :integer]]
-   [book "Book" :json [[:string]]]
-   [created-time "Created Time" :created-time]
-   [modified-time "Modified Time" :modified-time]])
-
-
-
-
-
-(defpartial base [& body]
-  (layout "SignUp Website"
-          ""
-          (container body)))
-
-(defpartial error-item [[first-error]]
-  [:span {:class "help-inline"} first-error])
-
-
-(defpartial with-form [& body]
-  [:form {:method "post" :class "form-horizontal"}
-   [:fieldset
-    body]])
-
-
-(defpartial form-buttons [& {:keys [submit-button reset-button]
-                             :or {submit-button "Submit" reset-button "Reset"}}]
-  [:div {:class "form-actions"}
-   [:button {:type "submit" :class "btn btn-primary"} submit-button]
-   [:button {:class "btn" :type "reset"} reset-button]])
-
-(defpartial with-form-element [title error-keyword & body]
-  [:div {:class (if (vali/get-errors error-keyword)
-                  "control-group error"
-                  "control-group")}
-   [:label {:class "control-label"} title]
-   [:div {:class "controls"}
-    body (vali/on-error error-keyword error-item)]])
-  
-(defpartial form-element [title type name value]
-  (with-form-element title (keyword name)
-    (cond (= type :string) [:input {:type "text" :name name :value value}]
-          (= type :password) [:input {:type "password" :name name :value value}]
-          (= type :text) [:textarea {:name name} value]
-          (= type :json) [:textarea {:name name} value])))
-
-
-(defn make-form [elements button-text]
-  (with-form
-    (for [[title type name value] elements] (form-element title type name value))
-    (if button-text (form-buttons :submit-button button-text))))
+    
+;; Make signup form
 
 (defn signup-form [button-text {:keys [title desc info slot final]}]
   [:div {:class "well"}
@@ -137,6 +62,7 @@
                 ["Slot" :json "slot" slot]
                 ["Final Message" :text "final" final]]
                button-text)])
+
 
 (defpartial main-page [param]
   (base
@@ -173,6 +99,7 @@
             title]]))
       (form-buttons :submit-button "Sign Up"))]))
 
+
 (defn valid-json [json-str]
   (let [json (try (read-json json-str) (catch Exception e nil))]
     json))
@@ -191,10 +118,14 @@
              [:slot "Invalid slot definition"])
   (not (vali/errors? :title :desc :final :info :slot)))
 
+(defn vec-nil [n]
+  (for [_ (range n)] nil))
 
 (defn add-sheet [{:keys [title desc final info slot]}]
-  (let [key (gen-key 5)]
-    (ds/save! (Sheet. key title desc final info slot nil (java.util.Date.)))
+  (let [key (gen-key 5)
+        slot-count (count (read-json slot))
+        empty-book (json-str (vec-nil slot-count))]
+    (ds/save! (Sheet. key title desc final info slot empty-book (java.util.Date.)))
     key))
   
 (defn modify-sheet [sheet-key new-values]
@@ -206,27 +137,7 @@
           (get e :code))
         nil))))
     
-
-
-;; Page Routing
-
-(defpage "/" [:as param]
-  (main-page param))
-
-(defpage [:post "/"] {:as param}
-  (if (valid? param)
-    (do (let [key (add-sheet param)]
-          (base [:div
-                 [:h1 "Your signup form is created."]
-                 [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
-    (render "/" param)))
-
-
-(defpage "/:sheet-key" {:keys [sheet-key] :as param}
-  (with-sheet sheet-key [entity sheet]
-    (if sheet
-      (signup-view sheet param)
-      (str "Invalid sheet key: " sheet-key))))
+;; Booking
 
 (defpartial signed-up-view [{:keys [slot final]} param]
   (base
@@ -255,6 +166,12 @@
     
     (not (apply vali/errors? :slot keys))))
 
+(defn validate-book [book slot-size]
+  (let [diff (- slot-size (count book))]
+    (if (> diff 0)
+      (concat book (vec-nil diff))
+      book)))
+
 (defn save-book [entity book]
   (let [book-string (json-str book)]
     (ds/save! (assoc entity :book book-string))))
@@ -274,6 +191,45 @@
   (let [limit (second (get (sheet :slot) slot-idx))
         current (count (get (sheet :book) slot-idx))]
     (< current limit)))
+
+(defn except [n coll]
+  (keep-indexed #(if (not= %1 n) %2) coll))
+
+(defn delete-book [entity sheet slot-idx book-idx]
+  (let [old-book (sheet :book)
+        slot (except book-idx (get old-book slot-idx))
+        new-book (assoc old-book slot-idx slot)]
+    (save-book entity new-book)))
+
+
+;; List of sheet
+
+(defn get-sheets []
+  (ds/query :kind Sheet
+            :sort [[:created-time :dsc]]))
+
+
+;; Page Routing
+
+(defpage "/" [:as param]
+  (main-page param))
+
+(defpage [:post "/"] {:as param}
+  (if (valid? param)
+    (do (let [key (add-sheet param)]
+          (base [:div
+                 [:h1 "Your signup form is created."]
+                 [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
+    (render "/" param)))
+
+
+(defpage "/:sheet-key" {:keys [sheet-key] :as param}
+  (with-sheet sheet-key [entity sheet]
+    (if sheet
+      (signup-view sheet param)
+      (str "Invalid sheet key: " sheet-key))))
+
+
     
 
 (defpage [:post "/:sheet-key"] {:keys [sheet-key] :as param}
@@ -289,9 +245,6 @@
           (render "/:sheet-key" param))
         (str "Invalid sheet key: " sheet-key)))))
 
-(defn get-sheets []
-  (ds/query :kind Sheet
-            :sort [[:created-time :dsc]]))
   
 
 (defpage [:get ["/user/:user-id"]] {:keys [user-id]}
@@ -324,10 +277,12 @@
    [:thead
     [:tr [:th "Slot"] (for [i info] [:th i]) [:th "Delete"]]]
    [:tbody
+    (prn book)
+    (prn (validate-book book (count slot)))
     (for [[title limit books slot-idx]
           (map #(conj %1 %2 %3)
                slot
-               book
+               (validate-book book (count slot))
                (range (count slot)))]
       (if (empty? books)
         [:tr [:td title]] ;; Empty booking
@@ -372,17 +327,7 @@
         (str "Sorry")))
     (render "/manage/:sheet-key" param)))
 
-(defn except [n coll]
-  (keep-indexed #(if (not= %1 n) %2) coll))
 
-(defn delete-book [entity sheet slot-idx book-idx]
-  (let [old-book (sheet :book)
-        slot (except book-idx (get old-book slot-idx))
-        new-book (assoc old-book slot-idx slot)]
-    (save-book entity new-book)))
-
-        
- 
 
 (defpage "/manage/:sheet-key/delete" {:keys [sheet-key slot-idx book-idx]}
   (ds/with-transaction

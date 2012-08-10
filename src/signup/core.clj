@@ -1,5 +1,6 @@
 (ns signup.core
   (:use [noir.core :only (defpage defpartial render)])
+  (:use [noir.response :only (redirect)])
   (:use [clojure.data.json :only (read-json json-str)])
   (:require [appengine-magic.core :as ae])
   (:require [appengine-magic.services.datastore :as ds])
@@ -254,6 +255,9 @@
     
     (not (apply vali/errors? :slot keys))))
 
+(defn save-book [entity book]
+  (let [book-string (json-str book)]
+    (ds/save! (assoc entity :book book-string))))
 
 
 (defn add-book [entity sheet param slot-idx]
@@ -261,10 +265,10 @@
         values (for [k keys] (param k))
         old-book (sheet :book)
         slot (conj (get old-book slot-idx) values)
-        new-book (assoc old-book slot-idx slot)
-        new-book-string (json-str new-book)]
-    
-    (ds/save! (assoc entity :book new-book-string))))
+        new-book (assoc old-book slot-idx slot)]
+    (save-book entity new-book)))
+        
+
 
 (defn has-room? [sheet slot-idx]
   (let [limit (second (get (sheet :slot) slot-idx))
@@ -368,15 +372,24 @@
         (str "Sorry")))
     (render "/manage/:sheet-key" param)))
 
-(defn delete-book [entity sheet])
+(defn except [n coll]
+  (keep-indexed #(if (not= %1 n) %2) coll))
+
+(defn delete-book [entity sheet slot-idx book-idx]
+  (let [old-book (sheet :book)
+        slot (except book-idx (get old-book slot-idx))
+        new-book (assoc old-book slot-idx slot)]
+    (save-book entity new-book)))
+
+        
  
 
 (defpage "/manage/:sheet-key/delete" {:keys [sheet-key slot-idx book-idx]}
   (ds/with-transaction
     (with-sheet sheet-key [entity sheet]
       (if entity
-        (do (delete-book entity sheet)
-            "YES")
+        (do (delete-book entity sheet (Integer/parseInt slot-idx) (Integer/parseInt book-idx))
+            (redirect (str "/manage/" sheet-key)))
         (str "Not found")))))
 
   

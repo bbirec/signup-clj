@@ -8,7 +8,8 @@
   (:require [noir.util.gae :as noir-gae])
   (:require [noir.validation :as vali])
   (:use [hiccup.core])
-  (:use [hiccup.page-helpers]))
+  (:use [hiccup.page-helpers])
+  (:import [com.google.appengine.api.datastore KeyFactory]))
 
 
 ;; Server logic
@@ -270,20 +271,23 @@
       [:tr
        [:th "URL"]
        [:th "Title"]
-       [:th "# of Slots"]
-       [:th "Progress"]
        [:th "Created time"]
-       [:th "Manage"]]]
+       [:th "Status"]
+       [:th "Edit"]
+       [:th "Delete"]]]
      [:tbody
       (for [sheet (get-sheets)]
         (let [entity (sheet-entity sheet)]
           [:tr
            [:td [:a {:href (str "/" (entity :code)) :target "_blank"} (entity :code)]]
            [:td (entity :title)]
-           [:td (str (count (entity :slot)))]
-           [:td (str 0)]
-           [:td "Now"]
-           [:td [:a {:href (str "/manage/" (entity :code))} "Manage"]]]))]]]))
+           [:td (str (entity :created-time))]
+           [:td [:a {:href (str "/manage/" (entity :code))
+                     :class "btn btn-primary"} "View Status"]]
+           [:td [:a {:href (str "/manage/" (entity :code))
+                     :class "btn btn-info"} "Edit"]]
+           [:td [:a {:href (str "/manage/" (entity :code) "/delete")
+                     :class "btn btn-danger"} "Delete"]]]))]]]))
 
 
 (defpartial view-book-table [{:keys [info slot book code]}]
@@ -310,7 +314,7 @@
                      :href
                      (str "/manage/"
                           code
-                          "/delete?slot-idx="
+                          "/delete-book?slot-idx="
                           slot-idx
                           "&book-idx="
                           book-idx)} "Delete"]]])))]])
@@ -340,14 +344,21 @@
     (render "/manage/:sheet-key" param)))
 
 
-(defpage "/manage/:sheet-key/delete" {:keys [sheet-key slot-idx book-idx]}
+(defpage "/manage/:sheet-key/delete-book" {:keys [sheet-key slot-idx book-idx]}
   (ds/with-transaction
     (with-sheet sheet-key [entity sheet]
       (do (delete-book entity
                        sheet
                        (Integer/parseInt slot-idx)
                        (Integer/parseInt book-idx))
-          (redirect (str "/manage/" sheet-key))))))  
+          (redirect (str "/manage/" sheet-key))))))
+
+(defpage "/manage/:sheet-key/delete" {:keys [sheet-key]}
+  (ds/with-transaction
+    (ds/delete! (KeyFactory/createKey "Sheet" sheet-key))
+    (redirect "/user/bbirec")))
+
+  
 
 ;;;;;;;;;;;  
   

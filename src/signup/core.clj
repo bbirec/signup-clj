@@ -1,5 +1,7 @@
 (ns signup.core
   (:use signup.view)
+  (:require [signup.requtil :as requtil])
+  (:require [signup.httpsession :as hs])
   (:use [noir.core :only (defpage defpartial render)])
   (:use [noir.response :only (redirect)])
   (:use [clojure.data.json :only (read-json json-str)])
@@ -7,6 +9,7 @@
   (:require [appengine-magic.services.datastore :as ds])
   (:require [noir.util.gae :as noir-gae])
   (:require [noir.validation :as vali])
+  (:require [noir.session :as session])
   (:use [hiccup.core])
   (:use [hiccup.page-helpers])
   (:import [com.google.appengine.api.datastore KeyFactory]))
@@ -19,6 +22,8 @@
          (take length
                (repeatedly #(rand-nth "1234567890")))))
 
+(defn vec-nil [n]
+  (for [_ (range n)] nil))
 
 
 ;; Model definition
@@ -146,8 +151,6 @@
              [:slot "Invalid slot definition"])
   (not (vali/errors? :title :desc :final :info :slot)))
 
-(defn vec-nil [n]
-  (for [_ (range n)] nil))
 
 (defn add-sheet [{:keys [title desc final info slot]}]
   (let [key (gen-key 5)
@@ -368,10 +371,20 @@
 ;;;;;;;;;;;  
   
 (defpage "/login" {:keys [username password]}
-  (str "Logging in as " username " with the password " password))
+  (let [user-id (session/get :user-id)]
+    (if user-id
+      (str "You are " user-id)
+      "Please login..")))
 
-(defpage [:get ["/login/:id" :id #"\d+"]] {:keys [id]}
-  (str "You are " id "."))
+
+
+
+(defpage [:get ["/login/:id"]] {:keys [id]}
+  (session/put! :user-id id)
+  (str "You are " id "." (requtil/absolute-url "/user/bbirec")))
+
+(defpage "/logout" []
+  (session/clear!))
 
 (defpage "/error" []
   {:status 500
@@ -380,4 +393,7 @@
 
 ;; Registering the handler
 (ae/def-appengine-app signup-app
-  (noir-gae/gae-handler {}))
+  (hs/wrap-http-session-store
+   (requtil/wrap-requtil
+    (noir-gae/gae-handler
+     {:session-store (hs/http-session-store "signup-session")}))))

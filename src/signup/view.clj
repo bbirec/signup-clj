@@ -18,6 +18,8 @@
     [:style {:type "text/css"} "body {padding-top: 60px; padding-bottom: 40px;}"]    
     (include-css "/assets/css/bootstrap-responsive.css")
     (include-js "/assets/js/bootstrap-collapse.js")
+    (include-js "/assets/js/json2.js")
+    (include-js "/assets/js/signup.js")
 
     head]
    [:body
@@ -96,7 +98,7 @@
     (cond (= type :string) [:input {:type "text" :name name :value value}]
           (= type :password) [:input {:type "password" :name name :value value}]
           (= type :text) [:textarea {:name name} value]
-          (= type :json) [:textarea {:name name} value])))
+          (= type :json) [:div {:name name :id name} value])))
 
 
 (defn make-form [elements button-text]

@@ -9,7 +9,7 @@
 
 (ds/defentity User [^:key email, password])
 
-(defn valid? [{:keys [email passwd1 passwd2]}]
+(defn valid-register? [{:keys [email passwd1 passwd2]}]
   (vali/rule (vali/is-email? email)
              [:email "You must type your email address."])
   (vali/rule (vali/has-value? passwd1)
@@ -23,7 +23,7 @@
 
 
 (defpage "/register" {:keys [email passwd1 passwd2]}
-  (base [:div {:class "well"}
+  (base-with-nav [:div {:class "well"}
          [:h2 "Register your account"]
          (with-form {}
            (with-form-element "Email"
@@ -41,19 +41,22 @@
   
 (defpage [:post "/register"] {:keys [email passwd1 passwd2] :as param}
   ;; Password check
-  (if (valid? param)
+  (if (valid-register? param)
     (ds/with-transaction
       (let [entity (ds/retrieve User email)]
         (if entity
-          "You are already signed up."
+          (error-view "You are already signed up."
+                      "Please try to log-in")
           (do
             (ds/save! (User. email passwd1))
-            "Thanks..."))))
+            (base-with-nav
+              [:h1 "Congraturation!"]
+              [:p "Registered successfully."])))))
     (render "/register" param)))
 
                     
 (defpage "/login" {:keys [email passwd]}
-  (base [:div {:class "well"}
+  (base-with-nav [:div {:class "well"}
          [:h2 "Login"]
          (with-form {}
            (with-form-element "Email"
@@ -85,6 +88,13 @@
 
 (defn logout []
   (session/clear!))
+
+(defn get-email []
+  (session/get :email))
+
+(defn logged-in? []
+  (not (nil? (get-email))))
+
 
 (defpage [:post "/login"] {:keys [email passwd] :as param}
   (if (valid-login? param)

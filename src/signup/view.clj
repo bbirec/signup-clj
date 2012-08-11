@@ -38,36 +38,38 @@
          [:h1 title]
          [:div body]]))
 
-(defpartial navbar []
+(defpartial navbar [brand links]
   [:div {:class "navbar navbar-fixed-top"}
    [:div {:class "navbar-inner"}
     [:div {:class "container"}
      [:a {:class "btn btn-navbar"
           :data-toggle "collapse"
           :data-target ".nav-collapse"}
-      [:span {:class "icon-bar"}]
-      [:span {:class "icon-bar"}]]
+      (for [_ (range (count links))]
+        [:span {:class "icon-bar"}])]
      
-     [:a {:class "brand"} "Signup Form"]
+     [:a {:class "brand"} brand]
      
      [:div {:class "nav-collapse"}
       [:ul {:class "nav"}
-       [:li {:class "active"} [:a {:href "/"} "Home"]]
-       [:li [:a {:href "/about"} "About"]]]]]]])
+       (for [[title url] links]
+         [:li [:a {:href url} title]])]]]]])
 
-(defpartial homepage []
+(defpartial base-with-nav [& body]
   (layout "Welcome to Signup web site"
           ""
-          (navbar)
-          [:div {:class "container"}
-   [:div {:class "hero-unit"}
-    [:h1 "Signup form"]
-    [:p "This is a template for a simple marketing or ....."]]
-   [:hr]
-   [:footer [:p "Company 2012"]]]))
+          (navbar "Signup Form"
+                  [["Home" "/"]
+                   ["Login" "/login"]
+                   ["Register" "/register"]
+                   ["Logout" "/logout"]])
+          [:div {:class "container"} body
+           [:hr]
+           [:footer [:p "Company 2012"]]]))
+  
+  
 
 ;; Form
-
 
 (defpartial error-item [[first-error]]
   [:span {:class "help-inline"} first-error])

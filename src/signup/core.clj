@@ -1,5 +1,6 @@
 (ns signup.core
   (:use signup.view)
+  (:use signup.user)
   (:require [signup.requtil :as requtil])
   (:require [signup.httpsession :as hs])
   (:use [noir.core :only (defpage defpartial render)])
@@ -88,49 +89,6 @@
     button-text)])
 
 
-(defpartial main-page [param]
-  (base
-   [:h1 "Make your signup form"]
-   (signup-form "Create Signup Form" param)))
-
-
-
-(defpartial signup-view [{:keys [title desc final info slot book]}
-                         param]
-  (base
-   [:div {:class "well"}
-    (with-form {}
-      [:h1 title]
-      [:p desc]
-      [:h2 "Required Information"]
-      (for [[title name]
-            (map #(list %1 (str "info_" %2))
-                 info (range (count info)))]
-        (form-element title :string name (get param (keyword name))))
-      
-      [:h2 "Slots"]
-      (with-form-element "Available slots" :slot
-        (for [[title limit value checked disabled]
-              (map #(conj %1
-                          (str %2)
-                          (if (empty? (param :slot)) false
-                              (= %2 (Integer/parseInt (param :slot))))
-                          (<= (second %1) (count %3)))
-                   slot
-                   (range (count slot))
-                   book)]
-          [:div
-           [:input
-            (let [prop {:type "radio" :name "slot" :value value}
-                  prop-check (if checked
-                               (assoc prop :checked "checked")
-                               prop)
-                  prop-disable (if disabled
-                                 (assoc prop-check :disabled "disabled")
-                                 prop-check)]
-              prop-disable)
-            title]]))
-      (form-buttons :submit-button "Sign Up"))]))
 
 
 (defn valid-json [json-str]
@@ -165,14 +123,6 @@
     
 ;; Booking
 
-(defpartial signed-up-view [{:keys [slot final]} param]
-  (base
-   [:div {:class "well"}
-    [:h1 "Congraturation!"]
-    [:p "You signed up for "
-     (let [slot-num (Integer/parseInt (param :slot))]
-       (first (nth slot slot-num)))]
-    [:p final]]))
 
 (defn is-int-str? [s]
   (if (empty? s) nil
@@ -230,72 +180,92 @@
             :sort [[:created-time :dsc]]))
 
 
-;; Page Routing
-
-(defpage "/" [:as param]
-  (homepage))
-
-(defpage "/new" [:as param]
-  (main-page param))
-
-(defpage [:post "/new"] {:as param}
-  (if (valid? param)
-    (do (let [key (add-sheet param)]
-          (base [:div {:class "well"}
-                 [:h1 "Your signup form is created."]
-                 [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
-    (render "/new" param)))
-
-
-(defpage "/:sheet-key" {:keys [sheet-key] :as param}
-  (with-sheet sheet-key [entity sheet]
-    (signup-view sheet param)))
+;; Patials
 
 
 
-    
-
-(defpage [:post "/:sheet-key"] {:keys [sheet-key] :as param}
-  (ds/with-transaction 
-    (with-sheet sheet-key [entity sheet]
-      (if (valid-signup? sheet param)
-        (let [slot-idx (Integer/parseInt (param :slot))]
-          (if (has-room? sheet slot-idx)
-              (do (add-book entity sheet param slot-idx)
-                  (signed-up-view sheet param))
-              (error-view "The slot is full"
-                          "Please select another slot.")))
-        (render "/:sheet-key" param)))))
-
-
-  
-
-(defpage [:get ["/user/:user-id"]] {:keys [user-id]}
+(defpartial signed-up-view [{:keys [slot final]} param]
   (base
-   [:div "Hi, " user-id]
-   [:div
-    [:table {:class "table table-striped"}
-     [:thead
-      [:tr
-       [:th "URL"]
-       [:th "Title"]
-       [:th "Created time"]
-       [:th "Status"]
-       [:th "Edit"]
-       [:th "Delete"]]]
-     [:tbody
-      (for [sheet (get-sheets)]
-        (let [entity (sheet-entity sheet)]
-          [:tr
-           [:td [:a {:href (str "/" (entity :code)) :target "_blank"} (entity :code)]]
-           [:td (entity :title)]
-           [:td (str (entity :created-time))]
-           [:td [:a {:href (str "/manage/" (entity :code))
-                     :class "btn btn-primary"} "View Status"]]
-           [:td [:a {:href (str "/manage/" (entity :code))
-                     :class "btn btn-info"} "Edit"]]
-           [:td [:a {:href (str "/manage/" (entity :code) "/delete")
-                     :class "btn btn-danger"} "Delete"]]]))]]]))
+   [:div {:class "well"}
+    [:h1 "Congraturation!"]
+    [:p "You signed up for "
+     (let [slot-num (Integer/parseInt (param :slot))]
+       (first (nth slot slot-num)))]
+    [:p final]]))
+
+
+(defpartial new-view [param]
+  (base-with-nav
+   [:h1 "Make your signup form"]
+   (signup-form "Create Signup Form" param)))
+
+
+
+(defpartial signup-view [{:keys [title desc final info slot book]}
+                         param]
+  (base
+   [:div {:class "well"}
+    (with-form {}
+      [:h1 title]
+      [:p desc]
+      [:h2 "Required Information"]
+      (for [[title name]
+            (map #(list %1 (str "info_" %2))
+                 info (range (count info)))]
+        (form-element title :string name (get param (keyword name))))
+      
+      [:h2 "Slots"]
+      (with-form-element "Available slots" :slot
+        (for [[title limit value checked disabled]
+              (map #(conj %1
+                          (str %2)
+                          (if (empty? (param :slot)) false
+                              (= %2 (Integer/parseInt (param :slot))))
+                          (<= (second %1) (count %3)))
+                   slot
+                   (range (count slot))
+                   book)]
+          [:div
+           [:input
+            (let [prop {:type "radio" :name "slot" :value value}
+                  prop-check (if checked
+                               (assoc prop :checked "checked")
+                               prop)
+                  prop-disable (if disabled
+                                 (assoc prop-check :disabled "disabled")
+                                 prop-check)]
+              prop-disable)
+            title]]))
+      (form-buttons :submit-button "Sign Up"))]))
+
+
+(defpartial sheet-list-view []
+  [:div
+   [:table {:class "table table-striped"}
+    [:thead
+     [:tr
+      [:th "URL"]
+      [:th "Title"]
+      [:th "Created time"]
+      [:th "Status"]
+      [:th "Edit"]
+      [:th "Delete"]]]
+    [:tbody
+     (for [sheet (get-sheets)]
+       (let [entity (sheet-entity sheet)]
+         [:tr
+          [:td [:a {:href (str "/" (entity :code)) :target "_blank"}
+                (requtil/absolute-url (str "/" (entity :code)))]]
+          [:td (entity :title)]
+          [:td (str (entity :created-time))]
+          [:td [:a {:href (str "/" (entity :code) "/status")
+                    :class "btn btn-primary"} "View Status"]]
+          [:td [:a {:href (str "/" (entity :code) "/edit")
+                    :class "btn btn-info"} "Edit"]]
+          [:td [:a {:href (str "/" (entity :code) "/delete")
+                    :class "btn btn-danger"} "Delete"]]]))]]])
+
+
 
 
 (defpartial view-book-table [{:keys [info slot book code]}]
@@ -320,7 +290,7 @@
 
            [:td [:a {:class "btn btn-danger"
                      :href
-                     (str "/manage/"
+                     (str "/"
                           code
                           "/delete-book?slot-idx="
                           slot-idx
@@ -328,14 +298,19 @@
                           book-idx)} "Delete"]]])))]])
 
 
-
-(defpage "/manage/:sheet-key" {:keys [sheet-key]}
-  (with-sheet sheet-key [entity sheet]
-    (base
-     [:h1 "Status"]
-     [:div (view-book-table sheet)]
-     [:h1 "Edit Form"]
-     (signup-form "Edit" entity))))
+(defpartial homepage []
+  (base-with-nav
+    (let [email (get-email)]
+      (if email
+        [:div 
+         [:p (str "Hi, " email)]
+         (sheet-list-view)
+         [:a {:class "btn btn-large btn-primary"
+              :href "/new"}
+          "Create New Signup Form"]]
+        [:div {:class "hero-unit"}
+         [:h1 "Signup form"]
+         [:p "This is a template for a simple marketing or ....."]]))))
 
 (defpartial signup-modified-view [code]
   (base [:div {:class "well"}
@@ -343,28 +318,79 @@
          [:p "Signup form : "
           [:a {:href (str "/" code)} "here"]]]))
 
-(defpage [:post ["/manage/:sheet-key"]] {:keys [sheet-key] :as param}
+
+;; Pages
+
+(defpage "/" [:as param]
+  (homepage))
+
+(defpage "/new" [:as param]
+  (new-view param))
+
+
+(defpage [:post "/new"] {:as param}
+  (if (valid? param)
+    (do (let [key (add-sheet param)]
+          (base-with-nav [:div {:class "well"}
+                 [:h1 "Your signup form is created."]
+                 [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
+    (render "/new" param)))
+
+
+(defpage "/:sheet-key" {:keys [sheet-key] :as param}
+  (with-sheet sheet-key [entity sheet]
+    (signup-view sheet param)))
+
+
+(defpage [:post "/:sheet-key"] {:keys [sheet-key] :as param}
+  (ds/with-transaction 
+    (with-sheet sheet-key [entity sheet]
+      (if (valid-signup? sheet param)
+        (let [slot-idx (Integer/parseInt (param :slot))]
+          (if (has-room? sheet slot-idx)
+              (do (add-book entity sheet param slot-idx)
+                  (signed-up-view sheet param))
+              (error-view "The slot is full"
+                          "Please select another slot.")))
+        (render "/:sheet-key" param)))))
+
+
+(defpage "/:sheet-key/edit" {:keys [sheet-key]}
+  (with-sheet sheet-key [entity sheet]
+    (base-with-nav
+     [:h1 "Edit Form"]
+     (signup-form "Edit" entity))))
+
+
+(defpage [:post ["/:sheet-key/edit"]] {:keys [sheet-key] :as param}
   (if (valid? param)
     (ds/with-transaction
       (with-sheet sheet-key [entity sheet]
         (do (modify-sheet entity param)
             (signup-modified-view (sheet :code)))))
-    (render "/manage/:sheet-key" param)))
+    (render "/:sheet-key/edit" param)))
 
 
-(defpage "/manage/:sheet-key/delete-book" {:keys [sheet-key slot-idx book-idx]}
+(defpage "/:sheet-key/status" {:keys [sheet-key]}
+  (with-sheet sheet-key [entity sheet]
+    (base-with-nav
+      [:h1 "Status"]
+      [:div (view-book-table sheet)])))
+
+
+(defpage "/:sheet-key/delete-book" {:keys [sheet-key slot-idx book-idx]}
   (ds/with-transaction
     (with-sheet sheet-key [entity sheet]
       (do (delete-book entity
                        sheet
                        (Integer/parseInt slot-idx)
                        (Integer/parseInt book-idx))
-          (redirect (str "/manage/" sheet-key))))))
+          (redirect (str "/" sheet-key "/status"))))))
 
-(defpage "/manage/:sheet-key/delete" {:keys [sheet-key]}
+(defpage "/:sheet-key/delete" {:keys [sheet-key]}
   (ds/with-transaction
     (ds/delete! (KeyFactory/createKey "Sheet" sheet-key))
-    (redirect "/user/bbirec")))
+    (redirect "/")))
 
 
 

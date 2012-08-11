@@ -366,29 +366,8 @@
     (ds/delete! (KeyFactory/createKey "Sheet" sheet-key))
     (redirect "/user/bbirec")))
 
-  
-
-;;;;;;;;;;;  
-  
-(defpage "/login" {:keys [username password]}
-  (let [user-id (session/get :user-id)]
-    (if user-id
-      (str "You are " user-id)
-      "Please login..")))
 
 
-
-
-(defpage [:get ["/login/:id"]] {:keys [id]}
-  (session/put! :user-id id)
-  (str "You are " id "." (requtil/absolute-url "/user/bbirec")))
-
-(defpage "/logout" []
-  (session/clear!))
-
-(defpage "/error" []
-  {:status 500
-   :body "Oh no!"})
 
 
 ;; Registering the handler

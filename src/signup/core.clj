@@ -238,7 +238,7 @@
 (defpage [:post "/new"] {:as param}
   (if (valid? param)
     (do (let [key (add-sheet param)]
-          (base [:div
+          (base [:div {:class "well"}
                  [:h1 "Your signup form is created."]
                  [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
     (render "/new" param)))

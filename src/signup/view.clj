@@ -4,16 +4,21 @@
   (:use [noir.core :only (defpage defpartial render)]))
 
 
-(defpartial layout [title head body]
+(defpartial layout [title head & body]
   (html5
    [:head
     [:meta {:charset "utf-8"}]
+    [:meta {:name "viewport"
+            :content "width=device-width, initial-scale=1.0"}]
     [:title title]
     ;; JQuery
     (include-js "https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js")
     ;; Bootstrap
     (include-css "/assets/css/bootstrap.css")
+    [:style {:type "text/css"} "body {padding-top: 60px; padding-bottom: 40px;}"]    
     (include-css "/assets/css/bootstrap-responsive.css")
+    (include-js "/assets/js/bootstrap-collapse.js")
+
     head]
    [:body
     body]))
@@ -30,6 +35,34 @@
   (base [:div {:class "well"}
          [:h1 title]
          [:div body]]))
+
+(defpartial navbar []
+  [:div {:class "navbar navbar-fixed-top"}
+   [:div {:class "navbar-inner"}
+    [:div {:class "container"}
+     [:a {:class "btn btn-navbar"
+          :data-toggle "collapse"
+          :data-target ".nav-collapse"}
+      [:span {:class "icon-bar"}]
+      [:span {:class "icon-bar"}]]
+     
+     [:a {:class "brand"} "Signup Form"]
+     
+     [:div {:class "nav-collapse"}
+      [:ul {:class "nav"}
+       [:li {:class "active"} [:a {:href "/"} "Home"]]
+       [:li [:a {:href "/about"} "About"]]]]]]])
+
+(defpartial homepage []
+  (layout "Welcome to Signup web site"
+          ""
+          (navbar)
+          [:div {:class "container"}
+   [:div {:class "hero-unit"}
+    [:h1 "Signup form"]
+    [:p "This is a template for a simple marketing or ....."]]
+   [:hr]
+   [:footer [:p "Company 2012"]]]))
 
 ;; Form
 

@@ -228,6 +228,9 @@
 ;; Page Routing
 
 (defpage "/" [:as param]
+  (homepage))
+
+(defpage "/new" [:as param]
   (main-page param))
 
 (defpage [:post "/"] {:as param}

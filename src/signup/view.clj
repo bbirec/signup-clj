@@ -73,8 +73,8 @@
   [:span {:class "help-inline"} first-error])
 
 
-(defpartial with-form [& body]
-  [:form {:method "post" :class "form-horizontal"}
+(defpartial with-form [opts & body]
+  [:form (merge opts {:method "post" :class "form-horizontal"})
    [:fieldset
     body]])
 
@@ -101,7 +101,7 @@
           (= type :json) [:div {:name name :id name} value])))
 
 
-(defn make-form [elements button-text]
-  (with-form
+(defn make-form [form-opts elements button-text]
+  (with-form form-opts
     (for [[title type name value] elements] (form-element title type name value))
     (if button-text (form-buttons :submit-button button-text))))

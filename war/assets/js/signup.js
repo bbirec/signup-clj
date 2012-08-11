@@ -29,14 +29,15 @@ function addButton(){
     return btn;
 }
 
-function infoElement(target, name, json){
+function infoElement(target, name){
     this.elem = $(target);
     this.name = name
-    this.json = json;
-    this.data = parseJsonList(json);
+    this.json = this.elem.text();
+    this.data = parseJsonList(this.json);
 
     // Add hidden field
-    this.elem.append(hiddenField(name, json));
+    this.hidden = hiddenField(name, this.json)
+    this.elem.append(this.hidden);
 
 
     // Add the button
@@ -75,28 +76,27 @@ infoElement.prototype.addElement = function(v) {
 
 infoElement.prototype.serialize = function() {
     this.data = serializeElem("." + this.name);
+    this.json = JSON.stringify(this.data);
+    this.hidden.val(this.json);
     return this.data;
 }
 
 
 
-function slotElement(target, name, json){
+function slotElement(target, name){
     this.elem = $(target);
     this.name = name;
-    this.json = json;
-    this.data = parseJsonList(json);
+    this.json = this.elem.text();
+    this.data = parseJsonList(this.json);
 
     // Add hidden field
-    this.elem.append(
-	$("<input/>",
-	  {type:"hidden",
-	   name:name,
-	   value:this.json}));
+    this.hidden = hiddenField(name, this.json);
+    this.elem.append(this.hidden);
     
     // Add button
     this.btn = addButton();
     this.btn.click($.proxy(function(){
-	this.addElement("");
+	this.addElement("", 1);
     }, this));
     this.elem.append(this.btn);
     
@@ -151,11 +151,21 @@ slotElement.prototype.serialize = function() {
 	slot[i][1] = parseInt(limits[i]);
     }
     this.data = slot;
+    this.json = JSON.stringify(this.data);
+    this.hidden.val(this.json);
+
     return slot;
 };
 
+
 var ie;
+var se;
 $(document).ready(function(){
-    ie = new infoElement("#info", "info", "[\"heehong\", \"eunbee\"]");
-    se = new slotElement("#slot", "slot", "[[\"test\", 1]]");
+    ie = new infoElement("#info", "info");
+    se = new slotElement("#slot", "slot");
+    $("#signup-form").submit(function(){
+	ie.serialize();
+	se.serialize();
+	return true;
+    });
 });

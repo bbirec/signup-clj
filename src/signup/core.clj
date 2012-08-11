@@ -73,12 +73,14 @@
 
 (defn signup-form [button-text {:keys [title desc info slot final]}]
   [:div {:class "well"}
-    (make-form [["Title" :string "title" title]
-                ["Description" :text "desc" desc]
-                ["Information" :json "info" info]
-                ["Slot" :json "slot" slot]
-                ["Final Message" :text "final" final]]
-               button-text)])
+   (make-form
+    {:id "signup-form"}
+    [["Title" :string "title" title]
+     ["Description" :text "desc" desc]
+     ["Information" :json "info" info]
+     ["Slot" :json "slot" slot]
+     ["Final Message" :text "final" final]]
+    button-text)])
 
 
 (defpartial main-page [param]
@@ -92,7 +94,7 @@
                          param]
   (base
    [:div {:class "well"}
-    (with-form
+    (with-form {}
       [:h1 title]
       [:p desc]
       [:h2 "Required Information"]

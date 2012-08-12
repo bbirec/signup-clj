@@ -178,8 +178,9 @@
 
 ;; List of sheet
 
-(defn get-sheets []
+(defn get-sheets [email]
   (ds/query :kind Sheet
+            :filter (= :email email)
             :sort [[:created-time :dsc]]))
 
 
@@ -249,7 +250,7 @@
       (form-buttons :submit-button "Sign Up"))]))
 
 
-(defpartial sheet-list-view []
+(defpartial sheet-list-view [email]
   [:div
    [:table {:class "table table-striped"}
     [:thead
@@ -261,7 +262,7 @@
       [:th "Edit"]
       [:th "Delete"]]]
     [:tbody
-     (for [sheet (get-sheets)]
+     (for [sheet (get-sheets email)]
        (let [entity (sheet-entity sheet)]
          [:tr
           [:td [:a {:href (str "/" (entity :code)) :target "_blank"}
@@ -314,7 +315,7 @@
       (if email
         [:div 
          [:p (str "Hi, " email)]
-         (sheet-list-view)
+         (sheet-list-view email)
          [:a {:class "btn btn-large btn-primary"
               :href "/new"}
           "Create New Signup Form"]]
@@ -326,10 +327,16 @@
               "Signup Now"]]]))))
 
 (defpartial signup-modified-view [code]
-  (base [:div {:class "well"}
-         [:h1 "Signup form is modified"]
-         [:p "Signup form : "
-          [:a {:href (str "/" code)} "here"]]]))
+  (base-with-nav
+    [:div {:class "well"}
+     [:h1 "Signup form is modified"]
+     [:p "Check your signup form : "
+      [:a {:href (str "/" code)
+           :target "_blank"}
+       (requtil/absolute-url (str "/" code))]]
+     [:p [:a {:class "btn btn-success"
+              :href "/"}
+          "Done"]]]))
 
 
 
@@ -350,7 +357,12 @@
             (base-with-nav
               [:div {:class "well"}
                [:h1 "Your signup form is created."]
-               [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
+               [:p "Signup form : "
+                [:a {:href (str "/" key)
+                     :target "_blank"}
+                 (requtil/absolute-url (str "/" key))]]
+               [:p [:a {:href "/"
+                        :class "btn btn-success"} "Done"]]])))
       (render "/new" param))))
 
 

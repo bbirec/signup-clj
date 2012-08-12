@@ -6,6 +6,34 @@
   (:use [noir.core :only (defpage defpartial render)])
   (:require [appengine-magic.services.datastore :as ds]))
 
+(defn login [email]
+  (session/put! :email email))
+
+(defn logout []
+  (session/clear!))
+
+(defn get-email []
+  (session/get :email))
+
+(defn logged-in? []
+  (not (nil? (get-email))))
+
+(defmacro with-login-required [& body]
+  `(if (logged-in?)
+    (do ~@body)
+    (redirect "/login")))
+
+(defmacro with-login-not-required [& body]
+  `(if (logged-in?)
+     (redirect "/")
+     (do ~@body)))
+
+(defmacro with-permission-required [entity & body]
+  `(if (= (get ~entity :email) (get-email))
+     (do ~@body)
+     (error-view "Access Denied." [:div "You don't have permission."])))
+
+
 
 (ds/defentity User [^:key email, password])
 
@@ -23,49 +51,54 @@
 
 
 (defpage "/register" {:keys [email passwd1 passwd2]}
-  (base-with-nav [:div {:class "well"}
-         [:h2 "Register your account"]
-         (with-form {}
-           (with-form-element "Email"
-             :email
-             [:input {:type "text" :name "email" :value email}])
-           (with-form-element "Password"
-             :passwd1
-             [:input {:type "password" :name "passwd1" :value passwd1}])
-           (with-form-element "Password Confirm"
-             :passwd2
-             [:input {:type "password" :name "passwd2" :value passwd2}])
-           (form-buttons :submit-button "Register"))]))
+  (with-login-not-required
+    (base-with-nav
+      [:div {:class "well"}
+       [:h2 "Register your account"]
+       (with-form {}
+         (with-form-element "Email"
+           :email
+           [:input {:type "text" :name "email" :value email}])
+         (with-form-element "Password"
+           :passwd1
+           [:input {:type "password" :name "passwd1" :value passwd1}])
+         (with-form-element "Password Confirm"
+           :passwd2
+           [:input {:type "password" :name "passwd2" :value passwd2}])
+         (form-buttons :submit-button "Register"))])))
 
 
   
 (defpage [:post "/register"] {:keys [email passwd1 passwd2] :as param}
-  ;; Password check
-  (if (valid-register? param)
-    (ds/with-transaction
-      (let [entity (ds/retrieve User email)]
-        (if entity
-          (error-view "You are already signed up."
-                      "Please try to log-in")
-          (do
-            (ds/save! (User. email passwd1))
-            (base-with-nav
-              [:h1 "Congraturation!"]
-              [:p "Registered successfully."])))))
-    (render "/register" param)))
+  (with-login-not-required
+    ;; Password check
+    (if (valid-register? param)
+      (ds/with-transaction
+        (let [entity (ds/retrieve User email)]
+          (if entity
+            (error-view "You are already signed up."
+                        "Please try to log-in")
+            (do
+              (ds/save! (User. email passwd1))
+              (base-with-nav
+                [:h1 "Congraturation!"]
+                [:p "Registered successfully."])))))
+      (render "/register" param))))
 
                     
 (defpage "/login" {:keys [email passwd]}
-  (base-with-nav [:div {:class "well"}
-         [:h2 "Login"]
-         (with-form {}
-           (with-form-element "Email"
-             :email
-             [:input {:type "text" :name "email" :value email}])
-           (with-form-element "Password"
-             :passwd
-             [:input {:type "password" :name "passwd" :value passwd}])
-           (form-buttons :submit-button "Login"))]))
+  (with-login-not-required
+    (base-with-nav
+      [:div {:class "well"}
+       [:h2 "Login"]
+       (with-form {}
+         (with-form-element "Email"
+           :email
+           [:input {:type "text" :name "email" :value email}])
+         (with-form-element "Password"
+           :passwd
+           [:input {:type "password" :name "passwd" :value passwd}])
+         (form-buttons :submit-button "Login"))])))
                      
 (defn valid-login? [{:keys [email passwd]}]
   (vali/rule (vali/is-email? email)
@@ -83,30 +116,21 @@
                [:passwd "Invalid password"]))
   (not (vali/errors? :email :passwd)))
 
-(defn login [email]
-  (session/put! :email email))
-
-(defn logout []
-  (session/clear!))
-
-(defn get-email []
-  (session/get :email))
-
-(defn logged-in? []
-  (not (nil? (get-email))))
 
 
 (defpage [:post "/login"] {:keys [email passwd] :as param}
-  (if (valid-login? param)
-    (let [entity (ds/retrieve User email)]
-      (if (valid-account? entity param)
-        (do (login email)
-            (redirect "/"))
-        (render "/login" param)))
-    (render "/login" param)))
+  (with-login-not-required
+    (if (valid-login? param)
+      (let [entity (ds/retrieve User email)]
+        (if (valid-account? entity param)
+          (do (login email)
+              (redirect "/"))
+          (render "/login" param)))
+      (render "/login" param))))
         
       
 (defpage "/logout" []
-  (logout)
-  (redirect "/"))
+  (with-login-required
+    (logout)
+    (redirect "/")))
 

@@ -28,7 +28,7 @@
 
 
 ;; Model definition
-(ds/defentity Sheet [^:key code, title, desc, final, info, slot, book, created-time])
+(ds/defentity Sheet [^:key code, email, title, desc, final, info, slot, book, created-time])
 
 (defn entity-to-map
   [e]
@@ -113,8 +113,11 @@
 (defn add-sheet [{:keys [title desc final info slot]}]
   (let [key (gen-key 5)
         slot-count (count (read-json slot))
-        empty-book (json-str (vec-nil slot-count))]
-    (ds/save! (Sheet. key title desc final info slot empty-book (java.util.Date.)))
+        empty-book (json-str (vec-nil slot-count))
+        email (get-email)]
+    (ds/save! (Sheet. key email title
+                      desc final info slot
+                      empty-book (java.util.Date.)))
     key))
   
 (defn modify-sheet [entity new-values]
@@ -319,22 +322,26 @@
           [:a {:href (str "/" code)} "here"]]]))
 
 
+
 ;; Pages
 
 (defpage "/" [:as param]
   (homepage))
 
 (defpage "/new" [:as param]
-  (new-view param))
+  (with-login-required
+    (new-view param)))
 
 
 (defpage [:post "/new"] {:as param}
-  (if (valid? param)
-    (do (let [key (add-sheet param)]
-          (base-with-nav [:div {:class "well"}
-                 [:h1 "Your signup form is created."]
-                 [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
-    (render "/new" param)))
+  (with-login-required
+    (if (valid? param)
+      (do (let [key (add-sheet param)]
+            (base-with-nav
+              [:div {:class "well"}
+               [:h1 "Your signup form is created."]
+               [:p "Signup form : " [:a {:href (str "/" key)} "here"]]])))
+      (render "/new" param))))
 
 
 (defpage "/:sheet-key" {:keys [sheet-key] :as param}
@@ -357,40 +364,46 @@
 
 (defpage "/:sheet-key/edit" {:keys [sheet-key]}
   (with-sheet sheet-key [entity sheet]
-    (base-with-nav
-     [:h1 "Edit Form"]
-     (signup-form "Edit" entity))))
+    (with-permission-required entity
+      (base-with-nav
+        [:h1 "Edit Form"]
+        (signup-form "Edit" entity)))))
 
 
 (defpage [:post ["/:sheet-key/edit"]] {:keys [sheet-key] :as param}
   (if (valid? param)
     (ds/with-transaction
       (with-sheet sheet-key [entity sheet]
-        (do (modify-sheet entity param)
-            (signup-modified-view (sheet :code)))))
+        (with-permission-required entity
+          (do (modify-sheet entity param)
+              (signup-modified-view (sheet :code))))))
     (render "/:sheet-key/edit" param)))
 
 
 (defpage "/:sheet-key/status" {:keys [sheet-key]}
   (with-sheet sheet-key [entity sheet]
-    (base-with-nav
-      [:h1 "Status"]
-      [:div (view-book-table sheet)])))
+    (with-permission-required entity
+      (base-with-nav
+        [:h1 "Status"]
+        [:div (view-book-table sheet)]))))
 
 
 (defpage "/:sheet-key/delete-book" {:keys [sheet-key slot-idx book-idx]}
   (ds/with-transaction
     (with-sheet sheet-key [entity sheet]
-      (do (delete-book entity
-                       sheet
-                       (Integer/parseInt slot-idx)
-                       (Integer/parseInt book-idx))
-          (redirect (str "/" sheet-key "/status"))))))
+      (with-permission-required entity
+        (do (delete-book entity
+                         sheet
+                         (Integer/parseInt slot-idx)
+                         (Integer/parseInt book-idx))
+            (redirect (str "/" sheet-key "/status")))))))
 
 (defpage "/:sheet-key/delete" {:keys [sheet-key]}
   (ds/with-transaction
-    (ds/delete! (KeyFactory/createKey "Sheet" sheet-key))
-    (redirect "/")))
+    (with-sheet sheet-key [entity sheet]
+      (with-permission-required entity
+        (ds/delete! entity)
+        (redirect "/")))))
 
 
 

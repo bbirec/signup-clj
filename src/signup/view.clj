@@ -55,19 +55,7 @@
        (for [[title url] links]
          [:li [:a {:href url} title]])]]]]])
 
-(defpartial base-with-nav [& body]
-  (layout "Welcome to Signup web site"
-          ""
-          (navbar "Signup Form"
-                  [["Home" "/"]
-                   ["Login" "/login"]
-                   ["Register" "/register"]
-                   ["Logout" "/logout"]])
-          [:div {:class "container"} body
-           [:hr]
-           [:footer [:p "Company 2012"]]]))
-  
-  
+
 
 ;; Form
 

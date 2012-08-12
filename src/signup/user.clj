@@ -34,6 +34,36 @@
      (error-view "Access Denied." [:div "You don't have permission."])))
 
 
+(defpartial base-user
+  [title header & body]
+  (layout title
+           header
+           (navbar "Signup Form"
+                   (if (logged-in?)
+                     [["Home" "/"]
+                      ["Logout" "/logout"]]
+                     [["Home" "/"]
+                      ["Login" "/login"]
+                      ["Register" "/register"]]))
+
+           [:div {:class "container"} body
+            [:hr]
+            [:footer [:p "Company 2012"]]]))
+
+
+(defpartial base-with-nav
+  [& body]
+  (base-user "Signup Web Site"
+             [:script "var editable=true;"]
+             body))
+
+(defpartial base-with-nav-noneditable
+  [& body]
+  (base-user "Signup Web Site"
+             [:script "var editable=false;"]
+             body))
+
+  
 
 (ds/defentity User [^:key email, password])
 

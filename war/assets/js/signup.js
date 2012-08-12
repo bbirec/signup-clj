@@ -29,11 +29,16 @@ function addButton(){
     return btn;
 }
 
-function infoElement(target, name){
+function infoElement(target, name, editable){
     this.elem = $(target);
     this.name = name
     this.json = this.elem.text();
     this.data = parseJsonList(this.json);
+    this.editable = editable;
+
+    // Clear data
+    this.elem.text("");
+
 
     // Add hidden field
     this.hidden = hiddenField(name, this.json)
@@ -41,11 +46,13 @@ function infoElement(target, name){
 
 
     // Add the button
-    this.btn = addButton();
-    this.btn.click($.proxy(function(){
-	this.addElement("");
-    }, this));
-    this.elem.append(this.btn);
+    if(editable){
+	this.btn = addButton();
+	this.btn.click($.proxy(function(){
+	    this.addElement("");
+	}, this));
+	this.elem.append(this.btn);
+    }
 
     // Add the data
     for(i=0;i<this.data.length;i++){
@@ -63,15 +70,21 @@ infoElement.prototype.addElement = function(v) {
 	   value:v, 
 	   placeholder:"Group Name"}));
 
-    container.append(
+    if(this.editable){
+	container.append(
 	$("<span/>", 
 	  {style:"cursor:pointer"}
 	 ).append($("<i/>", {class:"icon-remove"})).click(
-		function (){
+	     function (){
 		    container.remove();
 		}));
+	this.btn.before(container);
+    }
+    else{
+	this.elem.append(container);
+    }
 
-    this.btn.before(container);
+    
 }
 
 infoElement.prototype.serialize = function() {
@@ -83,23 +96,29 @@ infoElement.prototype.serialize = function() {
 
 
 
-function slotElement(target, name){
+function slotElement(target, name, editable){
     this.elem = $(target);
     this.name = name;
     this.json = this.elem.text();
     this.data = parseJsonList(this.json);
+    this.editable = editable;
+
+    // Clear data
+    this.elem.text("");
+
 
     // Add hidden field
     this.hidden = hiddenField(name, this.json);
     this.elem.append(this.hidden);
     
     // Add button
-    this.btn = addButton();
-    this.btn.click($.proxy(function(){
-	this.addElement("", 1);
-    }, this));
-    this.elem.append(this.btn);
-    
+    if(editable){
+	this.btn = addButton();
+	this.btn.click($.proxy(function(){
+	    this.addElement("", 1);
+	}, this));
+	this.elem.append(this.btn);
+    }
 
     // Add element
     for(i=0;i<this.data.length;i++){
@@ -123,20 +142,24 @@ slotElement.prototype.addElement = function(name, limit){
 	  {type:"text",
 	   class:"slot_limit",
 	   value:limit,
-	   placeholder:"1"}));
+	   placeholder:"1",
+	   disabled:!this.editable}));
 
     container.append(" slots");
 
-
-    container.append(
-	$("<span/>", 
-	  {style:"cursor:pointer"}
-	 ).append($("<i/>", {class:"icon-remove"})).click(
-	     function (){
-		 container.remove();
-	     }));
-
-    this.btn.before(container);
+    if(this.editable){
+	container.append(
+	    $("<span/>", 
+	      {style:"cursor:pointer"}
+	     ).append($("<i/>", {class:"icon-remove"})).click(
+		 function (){
+		     container.remove();
+		 }));
+	this.btn.before(container);
+    }
+    else{
+	this.elem.append(container);
+    }
 
 }
 
@@ -161,8 +184,8 @@ slotElement.prototype.serialize = function() {
 var ie;
 var se;
 $(document).ready(function(){
-    ie = new infoElement("#info", "info");
-    se = new slotElement("#slot", "slot");
+    ie = new infoElement("#info", "info", editable);
+    se = new slotElement("#slot", "slot", editable);
     $("#signup-form").submit(function(){
 	ie.serialize();
 	se.serialize();

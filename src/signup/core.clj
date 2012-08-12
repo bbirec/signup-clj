@@ -369,7 +369,7 @@
 (defpage "/:sheet-key/edit" {:keys [sheet-key]}
   (with-sheet sheet-key [entity sheet]
     (with-permission-required entity
-      (base-with-nav
+      (base-with-nav-noneditable
         [:h1 "Edit Form"]
         (signup-form "Edit" entity)))))
 

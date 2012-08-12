@@ -144,10 +144,10 @@
 (defn valid-account? [entity {:keys [email passwd]}]
 
   (vali/rule (not (nil? entity))
-             [:email "Invalid email address"])
+             [:email "Wrong email address"])
   (if entity
     (vali/rule (= (get entity :password) passwd)
-               [:passwd "Invalid password"]))
+               [:passwd "Wrong password"]))
   (not (vali/errors? :email :passwd)))
 
 

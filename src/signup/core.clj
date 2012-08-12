@@ -192,7 +192,7 @@
   (base
    [:div {:class "well"}
     [:h1 "Congraturation!"]
-    [:p "You successfully signed up for "
+    [:p "You have successfully signed up for "
      (let [slot-num (Integer/parseInt (param :slot))]
        (first (nth slot slot-num)))
      "."]

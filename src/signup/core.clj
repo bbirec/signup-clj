@@ -219,12 +219,13 @@
       
       [:h2 "Slots"]
       (with-form-element "Available slots" :slot
-        (for [[title limit value checked disabled]
+        (for [[title limit value checked disabled available]
               (map #(conj %1
                           (str %2)
                           (if (empty? (param :slot)) false
                               (= %2 (Integer/parseInt (param :slot))))
-                          (<= (second %1) (count %3)))
+                          (<= (second %1) (count %3))
+                          (- (second %1) (count %3)))
                    slot
                    (range (count slot))
                    book)]
@@ -238,7 +239,10 @@
                                  (assoc prop-check :disabled "disabled")
                                  prop-check)]
               prop-disable)
-            title]]))
+            title]
+           (if disabled
+             [:span " - Not available"]
+             [:span (str " - " available " slot(s) available.")])]))
       (form-buttons :submit-button "Sign Up"))]))
 
 

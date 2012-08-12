@@ -30,13 +30,14 @@
 
 (defpartial base [& body]
   (layout "SignUp Website"
-          ""
+          [:script "var editable=true;"]
           (container body)))
 
 (defpartial error-view [title & body]
   (base [:div {:class "well"}
          [:h1 title]
-         [:div body]]))
+         [:div body]
+         [:p {:class "btn btn-info" :onclick "history.go(-1)"} "Go Back"]]))
 
 (defpartial navbar [brand links]
   [:div {:class "navbar navbar-fixed-top"}

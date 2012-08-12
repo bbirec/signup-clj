@@ -187,14 +187,17 @@
 
 
 
-(defpartial signed-up-view [{:keys [slot final]} param]
+(defpartial signed-up-view [{:keys [code slot final]} param]
   (base
    [:div {:class "well"}
     [:h1 "Congraturation!"]
-    [:p "You signed up for "
+    [:p "You successfully signed up for "
      (let [slot-num (Integer/parseInt (param :slot))]
-       (first (nth slot slot-num)))]
-    [:p final]]))
+       (first (nth slot slot-num)))
+     "."]
+    [:p final]
+    [:p [:a {:class "btn btn-success"
+           :href (str "/" code)} "Okay"]]]))
 
 
 (defpartial new-view [param]
@@ -317,7 +320,10 @@
           "Create New Signup Form"]]
         [:div {:class "hero-unit"}
          [:h1 "Signup form"]
-         [:p "This is a template for a simple marketing or ....."]]))))
+         [:p "Signup form is ......"]
+         [:p [:a {:class "btn btn-primary btn-large"
+                  :href "/new"}
+              "Signup Now"]]]))))
 
 (defpartial signup-modified-view [code]
   (base [:div {:class "well"}

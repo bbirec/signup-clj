@@ -111,8 +111,11 @@
             (do
               (ds/save! (User. email passwd1))
               (base-with-nav
-                [:h1 "Congraturation!"]
-                [:p "Registered successfully."])))))
+                [:div {:class "well"}
+                 [:h1 "Congraturation!"]
+                 [:p "Registered successfully."]
+                 [:p [:a {:class "btn btn-success"
+                          :href "/login"} "Login"]]])))))
       (render "/register" param))))
 
                     
@@ -128,7 +131,8 @@
          (with-form-element "Password"
            :passwd
            [:input {:type "password" :name "passwd" :value passwd}])
-         (form-buttons :submit-button "Login"))])))
+         (form-buttons :submit-button "Login"))
+       [:div "Your first visit?, " [:a {:href "/register"} "Register Now"]]])))
                      
 (defn valid-login? [{:keys [email passwd]}]
   (vali/rule (vali/is-email? email)

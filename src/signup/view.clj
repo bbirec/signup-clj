@@ -89,7 +89,10 @@
     (cond (= type :string) [:input {:type "text" :name name :value value}]
           (= type :password) [:input {:type "password" :name name :value value}]
           (= type :text) [:textarea {:name name} value]
-          (= type :json) [:div {:name name :id name} value])))
+          (= type :json) [:div {:name name :id name} value]
+          (= type :url) [:div {:class "input-prepend"}
+                         [:span {:class "add-on"} "http://"]
+                         [:input {:type "text" :name name :value value}]])))
 
 
 (defn make-form [form-opts elements button-text]

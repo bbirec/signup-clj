@@ -28,7 +28,7 @@
 
 
 ;; Model definition
-(ds/defentity Sheet [^:key code, email, title, desc, final, info, slot, book, created-time])
+(ds/defentity Sheet [^:key code, email, title, desc, final, info, slot, book, exit, created-time])
 
 (defn entity-to-map
   [e]
@@ -77,7 +77,7 @@
     
 ;; Make signup form
 
-(defn signup-form [button-text {:keys [title desc info slot final]}]
+(defn signup-form [button-text {:keys [title desc info slot final exit]}]
   [:div {:class "well"}
    (make-form
     {:id "signup-form"}
@@ -85,7 +85,8 @@
      ["Description" :text "desc" desc]
      ["Information" :json "info" info]
      ["Slot" :json "slot" slot]
-     ["Final Message" :text "final" final]]
+     ["Final Message" :text "final" final]
+     ["Exit Url" :url "exit" exit]]
     button-text)])
 
 
@@ -96,7 +97,7 @@
     json))
 
     
-(defn valid? [{:keys [title desc final info slot]}]
+(defn valid? [{:keys [title desc final info slot exit]}]
   (vali/rule (vali/has-value? title)
              [:title "You must have title"])
   (vali/rule (vali/has-value? desc)
@@ -107,17 +108,19 @@
              [:info "Invalid information definition"])
   (vali/rule (valid-json slot)
              [:slot "Invalid slot definition"])
-  (not (vali/errors? :title :desc :final :info :slot)))
+  (vali/rule (vali/has-value? exit)
+             [:exit "You must set your exit url."])
+  (not (vali/errors? :title :desc :final :info :slot :exit)))
 
 
-(defn add-sheet [{:keys [title desc final info slot]}]
+(defn add-sheet [{:keys [title desc final info slot exit]}]
   (let [key (gen-key 5)
         slot-count (count (read-json slot))
         empty-book (json-str (vec-nil slot-count))
         email (get-email)]
     (ds/save! (Sheet. key email title
                       desc final info slot
-                      empty-book (java.util.Date.)))
+                      empty-book exit (java.util.Date.)))
     key))
   
 (defn modify-sheet [entity new-values]
@@ -188,7 +191,7 @@
 
 
 
-(defpartial signed-up-view [{:keys [code slot final]} param]
+(defpartial signed-up-view [{:keys [code slot final exit]} param]
   (base
    [:div {:class "well"}
     [:h1 "Congratulations!"]
@@ -198,7 +201,7 @@
      "."]
     [:p final]
     [:p [:a {:class "btn btn-success"
-           :href (str "/" code)} "Click Here to Exit"]]]))
+           :href (str "http://" exit)} "Click Here to Exit"]]]))
 
 
 (defpartial new-view [param]
@@ -247,7 +250,7 @@
            (if disabled
              [:span " - Not available"]
              [:span (str " - " available " slot(s) available.")])]))
-      (form-buttons :submit-button "Sign Up"))]))
+      (form-buttons :submit-button "Sign-Up"))]))
 
 
 (defpartial sheet-list-view [email]

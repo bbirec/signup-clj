@@ -71,7 +71,7 @@
         ~else))
   ([key [entity map] then]
      `(with-sheet ~key [~entity ~map] ~then
-        (error-view "Not found signup form" [:p "Please check again"]))))
+        (error-view "Not found sign-up form" [:p "Please check again"]))))
 
 
     
@@ -100,7 +100,7 @@
   (vali/rule (vali/has-value? title)
              [:title "You must have title"])
   (vali/rule (vali/has-value? desc)
-             [:desc "You must describe your signup form"])
+             [:desc "You must describe your sign-up form"])
   (vali/rule (vali/has-value? final)
              [:final "You must set your final message"])
   (vali/rule (valid-json info)
@@ -191,20 +191,20 @@
 (defpartial signed-up-view [{:keys [code slot final]} param]
   (base
    [:div {:class "well"}
-    [:h1 "Congraturation!"]
+    [:h1 "Congratulations!"]
     [:p "You have successfully signed up for "
      (let [slot-num (Integer/parseInt (param :slot))]
        (first (nth slot slot-num)))
      "."]
     [:p final]
     [:p [:a {:class "btn btn-success"
-           :href (str "/" code)} "Okay"]]]))
+           :href (str "/" code)} "Click Here to Exit"]]]))
 
 
 (defpartial new-view [param]
   (base-with-nav
-   [:h1 "Make your signup form"]
-   (signup-form "Create Signup Form" param)))
+   [:h1 "Create a New Sign-Up Form"]
+   (signup-form "Create" param)))
 
 
 
@@ -221,8 +221,8 @@
                  info (range (count info)))]
         (form-element title :string name (get param (keyword name))))
       
-      [:h2 "Slots"]
-      (with-form-element "Available slots" :slot
+      [:h2 "Sign-up for"]
+      (with-form-element "" :slot
         (for [[title limit value checked disabled available]
               (map #(conj %1
                           (str %2)
@@ -318,19 +318,19 @@
          (sheet-list-view email)
          [:a {:class "btn btn-large btn-primary"
               :href "/new"}
-          "Create New Signup Form"]]
+          "Create a New Sign-Up Form"]]
         [:div {:class "hero-unit"}
-         [:h1 "Signup form"]
-         [:p "Signup form is ......"]
+         [:h1 "Sign-Up form"]
+         [:p "Sign-Up form is ......"]
          [:p [:a {:class "btn btn-primary btn-large"
                   :href "/new"}
-              "Signup Now"]]]))))
+              "Learn More"]]]))))
 
 (defpartial signup-modified-view [code]
   (base-with-nav
     [:div {:class "well"}
-     [:h1 "Signup form is modified"]
-     [:p "Check your signup form : "
+     [:h1 "Sign-Up form is modified"]
+     [:p "Check your sign-up form : "
       [:a {:href (str "/" code)
            :target "_blank"}
        (requtil/absolute-url (str "/" code))]]
@@ -356,8 +356,8 @@
       (do (let [key (add-sheet param)]
             (base-with-nav
               [:div {:class "well"}
-               [:h1 "Your signup form is created."]
-               [:p "Signup form : "
+               [:h1 "Your sign-up form is created."]
+               [:p "Sign-Up form : "
                 [:a {:href (str "/" key)
                      :target "_blank"}
                  (requtil/absolute-url (str "/" key))]]

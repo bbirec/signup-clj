@@ -38,7 +38,7 @@
   [title header & body]
   (layout title
            header
-           (navbar "Signup Form"
+           (navbar "Sign-Up Form"
                    (if (logged-in?)
                      [["Home" "/"]
                       ["Logout" "/logout"]]
@@ -53,13 +53,13 @@
 
 (defpartial base-with-nav
   [& body]
-  (base-user "Signup Web Site"
+  (base-user "Sign-Up Web Site"
              [:script "var editable=true;"]
              body))
 
 (defpartial base-with-nav-noneditable
   [& body]
-  (base-user "Signup Web Site"
+  (base-user "Sign-Up Web Site"
              [:script "var editable=false;"]
              body))
 
@@ -112,7 +112,7 @@
               (ds/save! (User. email passwd1))
               (base-with-nav
                 [:div {:class "well"}
-                 [:h1 "Congraturation!"]
+                 [:h1 "Congratulations!"]
                  [:p "Registered successfully."]
                  [:p [:a {:class "btn btn-success"
                           :href "/login"} "Login"]]])))))

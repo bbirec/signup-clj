@@ -29,7 +29,7 @@
   [:div {:class "container"} body])
 
 (defpartial base [& body]
-  (layout "SignUp Website"
+  (layout "Sign-Up Website"
           [:script "var editable=true;"]
           (container body)))
 

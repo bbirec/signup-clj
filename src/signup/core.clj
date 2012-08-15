@@ -323,7 +323,7 @@
               :href "/new"}
           "Create a New Sign-Up Form"]]
         [:div {:class "hero-unit"}
-         [:h1 "Sign-Up form"]
+         [:h1 "Sign-Up Form"]
          [:p "Sign-Up form is ......"]
          [:p [:a {:class "btn btn-primary btn-large"
                   :href "/new"}
@@ -346,7 +346,8 @@
 ;; Pages
 
 (defpage "/" [:as param]
-  (homepage))
+  (with-login-required
+    (homepage)))
 
 (defpage "/new" [:as param]
   (with-login-required

@@ -92,10 +92,28 @@
 
 
 
-(defn valid-json [json-str]
+(defn parse-json [json-str]
   (let [json (try (read-json json-str) (catch Exception e nil))]
     json))
 
+
+(defn valid-info? [json-str]
+  (let [json (parse-json json-str)]
+    (and (coll? json)
+         (every? #(and (string? %)
+                       (not= "" %))
+                 json))))
+
+(defn valid-slot? [json-str]
+  (let [json (parse-json json-str)]
+    (and (coll? json)
+         (every? #(and (coll? %)
+                       (= (count %) 2)
+                       (string? (first %))
+                       (not= "" (first %))
+                       (integer? (second %))
+                       (pos? (second %)))
+                 json))))
     
 (defn valid? [{:keys [title desc final info slot exit]}]
   (vali/rule (vali/has-value? title)
@@ -104,9 +122,9 @@
              [:desc "You must describe your sign-up form"])
   (vali/rule (vali/has-value? final)
              [:final "You must set your final message"])
-  (vali/rule (valid-json info)
+  (vali/rule (valid-info? info)
              [:info "Invalid information definition"])
-  (vali/rule (valid-json slot)
+  (vali/rule (valid-slot? slot)
              [:slot "Invalid slot definition"])
   (vali/rule (vali/has-value? exit)
              [:exit "You must set your exit url."])

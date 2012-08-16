@@ -25,8 +25,7 @@ function hiddenField(name, value){
 }
 
 function addButton(){
-    var btn = $("<div/>", {class:"btn"}).append($("<i/>", {class:"icon-plus"}));
-    return btn;
+    return $("<div/>", {class:"btn"}).append($("<i/>", {class:"icon-plus"}));
 }
 
 function infoElement(target, name, editable){

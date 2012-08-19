@@ -17,6 +17,11 @@ function serializeElem(target){
     return output;
 }
 
+function addButton(){
+    return $("<div/>", {"class":"btn"}).append($("<i/>", {"class":"icon-plus"})).append("Add");
+}
+
+
 function hiddenField(name, value){
     return $("<input/>",
 	     {type:"hidden",
@@ -24,9 +29,6 @@ function hiddenField(name, value){
 	      value:value});
 }
 
-function addButton(){
-    return $("<div/>", {class:"btn"}).append($("<i/>", {class:"icon-plus"}));
-}
 
 function infoElement(target, name, editable){
     this.elem = $(target);
@@ -65,15 +67,16 @@ infoElement.prototype.addElement = function(v) {
     container.append(
 	$("<input/>", 
 	  {type:"text", 
-	   class:this.name,
+	   "class":this.name,
 	   value:v, 
 	   placeholder:"Group Name"}));
 
     if(this.editable){
 	container.append(
 	$("<span/>", 
-	  {style:"cursor:pointer"}
-	 ).append($("<i/>", {class:"icon-remove"})).click(
+	  {style:"cursor:pointer",
+	   "class":"btn"}
+	 ).append($("<i/>", {"class":"icon-remove"})).append("Delete").click(
 	     function (){
 		    container.remove();
 		}));
@@ -130,7 +133,7 @@ slotElement.prototype.addElement = function(name, limit){
     container.append(
 	$("<input/>",
 	  {type:"text",
-	   class:"slot_name",
+	   "class":"slot_name",
 	   value:name,
 	   placeholder:"5/31 (Thr) 5 ~ 5:30 pm"}));
 
@@ -139,7 +142,7 @@ slotElement.prototype.addElement = function(name, limit){
     container.append(
 	$("<input/>",
 	  {type:"text",
-	   class:"slot_limit",
+	   "class":"slot_limit",
 	   value:limit,
 	   placeholder:"1",
 	   disabled:!this.editable}));
@@ -149,8 +152,9 @@ slotElement.prototype.addElement = function(name, limit){
     if(this.editable){
 	container.append(
 	    $("<span/>", 
-	      {style:"cursor:pointer"}
-	     ).append($("<i/>", {class:"icon-remove"})).click(
+	      {style:"cursor:pointer",
+	       "class":"btn"}
+	     ).append($("<i/>", {"class":"icon-remove"})).append("Delete").click(
 		 function (){
 		     container.remove();
 		 }));
@@ -166,7 +170,7 @@ slotElement.prototype.serialize = function() {
     var names = serializeElem(".slot_name");
     var limits = serializeElem(".slot_limit");
     
-    slot = new Array();
+    var slot = new Array();
     for(i=0;i<names.length;i++){
 	slot[i] = new Array();
 	slot[i][0] = names[i];

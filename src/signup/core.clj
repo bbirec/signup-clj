@@ -56,6 +56,12 @@
 (defn get-sheet [sheet-key]
   (ds/retrieve Sheet sheet-key))
 
+(defn get-sheets [email]
+  (ds/query :kind Sheet
+            :filter (= :email email)
+            :sort [[:created-time :dsc]]))
+
+
 (defn get-sheet-by-key [k]
   (let [e (get-sheet k)]
     (if e
@@ -83,8 +89,8 @@
     {:id "signup-form"}
     [["Title" :string "title" title]
      ["Description" :text "desc" desc]
-     ["Information" :json "info" info]
-     ["Slot" :json "slot" slot]
+     ["Information" :json "info" (h info)]
+     ["Slot" :json "slot" (h slot)]
      ["Final Message" :text "final" final]
      ["Exit Url" :url "exit" exit]]
     button-text)])
@@ -221,14 +227,6 @@
     (save-book entity new-book)))
 
 
-;; List of sheet
-
-(defn get-sheets [email]
-  (ds/query :kind Sheet
-            :filter (= :email email)
-            :sort [[:created-time :dsc]]))
-
-
 ;; Patials
 
 
@@ -239,9 +237,9 @@
     [:h1 "Congratulations!"]
     [:h4 "You have successfully signed up for "
      (let [slot-num (Integer/parseInt (param :slot))]
-       (first (nth slot slot-num)))
+       (h (first (nth slot slot-num))))
      "."]
-    [:h4 final]
+    [:h4 (h final)]
     [:p [:a {:class "btn btn-success"
            :href (str "http://" exit)} "Click Here to Exit"]]]))
 
@@ -258,13 +256,14 @@
   (base
    [:div {:class "well"}
     (with-form {}
-      [:h1 title]
-      [:h4 desc]
+      [:h1 (h title)]
+      [:h4 (h desc)]
       [:h2 "Required Information"]
       (for [[title name]
             (map #(list %1 (str "info_" %2))
                  info (range (count info)))]
-        (form-element title :string name (get param (keyword name))))
+        (form-element (h title) :string name
+                      (h (get param (keyword name)))))
       
       [:h2 "Sign-up for"]
       (with-form-element "" :slot
@@ -280,7 +279,7 @@
                    book)]
           [:div
            [:input
-            (let [prop {:type "radio" :name "slot" :value value}
+            (let [prop {:type "radio" :name "slot" :value (h value)}
                   prop-check (if checked
                                (assoc prop :checked "checked")
                                prop)
@@ -288,7 +287,7 @@
                                  (assoc prop-check :disabled "disabled")
                                  prop-check)]
               prop-disable)
-            title]
+            (h title)]
            (if disabled
              [:span " - Not available"]
              [:span (str " - " available " slot(s) available.")])]))
@@ -312,7 +311,7 @@
          [:tr
           [:td [:a {:href (str "/" (entity :code)) :target "_blank"}
                 (requtil/absolute-url (str "/" (entity :code)))]]
-          [:td (entity :title)]
+          [:td (h (entity :title))]
           [:td (str (entity :created-time))]
           [:td [:a {:href (str "/" (entity :code) "/status")
                     :class "btn btn-primary"} "View Status"]]
@@ -327,7 +326,7 @@
 (defpartial view-book-table [{:keys [info slot book code]}]
   [:table {:class "table table-striped"}
    [:thead
-    [:tr [:th "Slot"] (for [i info] [:th i]) [:th "Delete"]]]
+    [:tr [:th "Slot"] (for [i info] [:th (h i)]) [:th "Delete"]]]
    [:tbody
     (for [[title limit books slot-idx]
           (map #(conj %1 %2 %3)
@@ -335,14 +334,14 @@
                book
                (range (count slot)))]
       (if (empty? books)
-        [:tr [:td title]] ;; Empty booking
+        [:tr [:td (h title)]] ;; Empty booking
         (for [[book book-idx] (map #(vector %1 %2) books (range (count books)))]
           [:tr
            ;; Slot
            (if (identical? (first books) book)
-             [:td {:rowspan (str (count books))} title])
+             [:td {:rowspan (str (count books))} (h title)])
             
-           (for [b book] [:td b])
+           (for [b book] [:td (h b)])
 
            [:td [:a {:class "btn btn-danger"
                      :href

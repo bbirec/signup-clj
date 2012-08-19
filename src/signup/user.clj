@@ -4,6 +4,7 @@
   (:require [noir.validation :as vali])
   (:use [noir.response :only (redirect)])
   (:use [noir.core :only (defpage defpartial render)])
+  (:require [noir.util.crypt :as crypt])
   (:require [appengine-magic.services.datastore :as ds]))
 
 (defn login [email]
@@ -109,7 +110,7 @@
             (error-view "You are already signed up."
                         "Please try to log-in")
             (do
-              (ds/save! (User. email passwd1))
+              (ds/save! (User. email (crypt/encrypt passwd1)))
               (base-with-nav
                 [:div {:class "well"}
                  [:h1 "Congratulations!"]
@@ -146,7 +147,7 @@
   (vali/rule (not (nil? entity))
              [:email "Wrong email address"])
   (if entity
-    (vali/rule (= (get entity :password) passwd)
+    (vali/rule (crypt/compare passwd (get entity :password))
                [:passwd "Wrong password"]))
   (not (vali/errors? :email :passwd)))
 

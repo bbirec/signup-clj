@@ -12,8 +12,8 @@
   (:require [noir.validation :as vali])
   (:require [noir.session :as session])
   (:use [hiccup.core])
-  (:use [hiccup.page-helpers])
-  (:import [com.google.appengine.api.datastore KeyFactory]))
+  (:use [hiccup.page-helpers]))
+
 
 
 ;; Server logic
@@ -237,11 +237,11 @@
   (base
    [:div {:class "well"}
     [:h1 "Congratulations!"]
-    [:p "You have successfully signed up for "
+    [:h4 "You have successfully signed up for "
      (let [slot-num (Integer/parseInt (param :slot))]
        (first (nth slot slot-num)))
      "."]
-    [:p final]
+    [:h4 final]
     [:p [:a {:class "btn btn-success"
            :href (str "http://" exit)} "Click Here to Exit"]]]))
 
@@ -259,7 +259,7 @@
    [:div {:class "well"}
     (with-form {}
       [:h1 title]
-      [:p desc]
+      [:h4 desc]
       [:h2 "Required Information"]
       (for [[title name]
             (map #(list %1 (str "info_" %2))

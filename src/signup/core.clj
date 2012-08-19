@@ -83,17 +83,6 @@
     
 ;; Make signup form
 
-(defn signup-form [button-text {:keys [title desc info slot final exit]}]
-  [:div {:class "well"}
-   (make-form
-    {:id "signup-form"}
-    [["Title" :string "title" title]
-     ["Description" :text "desc" desc]
-     ["Information" :json "info" (h info)]
-     ["Slot" :json "slot" (h slot)]
-     ["Final Message" :text "final" final]
-     ["Exit Url" :url "exit" exit]]
-    button-text)])
 
 
 
@@ -229,6 +218,17 @@
 
 ;; Patials
 
+(defn signup-form [button-text {:keys [title desc info slot final exit]}]
+  [:div {:class "well"}
+   (make-form
+    {:id "signup-form"}
+    [["Title" :string "title" title]
+     ["Description" :text "desc" (h desc)]
+     ["Information" :json "info" (h info)]
+     ["Slot" :json "slot" (h slot)]
+     ["Final Message" :text "final" (h final)]
+     ["Exit Url" :url "exit" exit]]
+    button-text)])
 
 
 (defpartial signed-up-view [{:keys [code slot final exit]} param]

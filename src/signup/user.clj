@@ -240,9 +240,10 @@
         msg (mail/make-message :from "bbirec@gmail.com"
                                :to email
                                :subject "Forgot password request for SignUp Form"
-                               :text-body
-                               (str "Your new password : " new-passwd
-                                    "<br/><a href=\"" link "\">Login</a>"))]
+                               :html-body
+                               (str "Your new password is : " new-passwd "<br/>"
+                                    "Please reset your password after logging-in<br/>"
+                                    "<a href=\"" link "\">Login Here</a>"))]
     (mail/send msg)))
 
 

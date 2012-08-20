@@ -41,7 +41,8 @@
            header
            (navbar "Sign-Up Form"
                    (if (logged-in?)
-                     [["Home" "/"]
+                     [["My Sign-Up Forms" "/"]
+                      ["Reset Password" "/reset"]
                       ["Logout" "/logout"]]
                      [["Home" "/"]
                       ["Login" "/login"]
@@ -49,7 +50,7 @@
 
            [:div {:class "container"} body
             [:hr]
-            [:footer [:p "Company 2012"]]]))
+            [:footer [:p "Powered by Google AppEngine with Clojure"]]]))
 
 
 (defpartial base-with-nav
@@ -169,3 +170,47 @@
     (logout)
     (redirect "/")))
 
+
+(defpage "/reset" {:keys [current new1 new2]}
+  (with-login-required
+    (base-with-nav
+      [:div {:class "well"}
+       [:h2 "Reset Password"]
+       (with-form {}
+         (with-form-element "Current password"
+           :current
+           [:input {:type "password" :name "current" :value current}])
+         (with-form-element "New password"
+           :new1
+           [:input {:type "password" :name "new1" :value new1}])
+         (with-form-element "New password confirm"
+           :new2
+           [:input {:type "password" :name "new2" :value new2}])
+         (form-buttons :submit-button "Change"))])))
+
+(defn valid-reset? [{:keys [current new1 new2]}]
+  (vali/rule (vali/has-value? current)
+             [:current "Enter your current password."])
+  (vali/rule (vali/has-value? new1)
+             [:new1 "Enter new password."])
+  (vali/rule (vali/has-value? new2)
+             [:new2 "Enter the new password."])
+  (vali/rule (= new1 new2)
+             [:new2 "Enter the same password."])
+  (not (vali/errors? :current :new1 :new2)))
+             
+(defpage [:post "/reset"] {:keys [current new1 new2] :as param}
+  (with-login-required
+    (ds/with-transaction
+      (let [entity (ds/retrieve User (get-email))]
+        (if (crypt/compare current (get entity :password))
+          (if (valid-reset? param)
+            (do (ds/save! (assoc entity :password (crypt/encrypt new1)))
+                (redirect "/"))
+            (render "/reset" param))
+          (do (vali/set-error :current "Wrong password")
+              (render "/reset" param)))))))
+
+      
+            
+          

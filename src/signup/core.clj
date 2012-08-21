@@ -137,11 +137,11 @@
     (and (vali/rule (valid-info? info-json)
                     [:info "Invalid information definition"])
          (vali/rule (valid-info-string? info-json)
-                    [:info "Fill all blanks."]))
+                    [:info "Fill in all blanks."]))
     (and (vali/rule (valid-slot? slot-json)
                     [:slot "Invalid slot definition"])
          (vali/rule (valid-slot-name? slot-json)
-                    [:slot "Fill all blanks."])
+                    [:slot "Fill in all blanks."])
          (vali/rule (valid-slot-limit? slot-json)
                     [:slot "Please write the positive number."])))
 
@@ -181,7 +181,7 @@
 
     (doseq [key keys]
       (vali/rule (vali/has-value? (get param key))
-                 [key "Fill this blank"]))
+                 [key "Fill in this blank"]))
     
     (not (apply vali/errors? :slot keys))))
 

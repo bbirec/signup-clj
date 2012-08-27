@@ -93,6 +93,7 @@
 
 
 
+
 (defpage "/register" {:keys [email passwd1 passwd2]}
   (with-login-not-required
     (base-with-nav

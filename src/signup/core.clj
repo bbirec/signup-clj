@@ -8,6 +8,7 @@
   (:use [clojure.data.json :only (read-json json-str)])
   (:require [appengine-magic.core :as ae])
   (:require [appengine-magic.services.datastore :as ds])
+  (:import com.google.appengine.api.datastore.Text)
   (:require [noir.util.gae :as noir-gae])
   (:require [noir.validation :as vali])
   (:require [noir.session :as session])
@@ -26,9 +27,43 @@
 (defn vec-nil [n]
   (for [_ (range n)] nil))
 
+(defn replace-map [m keys func]
+  (let [valid-keys (filter #(not (nil? (get m %))) keys)
+        values (map #(func (get m %)) valid-keys)
+        new-m (zipmap valid-keys values)]
+    (merge m new-m)))
 
+(def text-properties [:info :slot :desc :final :book])
+
+
+(defn wrap-text
+  ([param keys]
+     (replace-map param keys #(Text. %)))
+  ([param]
+     (wrap-text param text-properties)))
+
+(defn unwrap-text
+  ([param keys]
+     (replace-map param keys #(.getValue %)))
+  ([param]
+     (unwrap-text param text-properties)))
+     
+
+
+   
 ;; Model definition
 (ds/defentity Sheet [^:key code, email, title, desc, final, info, slot, book, exit, created-time])
+
+;; Test
+(defn migration-string-to-text []
+  (let [entities (ds/query :kind Sheet)
+        new-entities (map #(wrap-text %) entities)]
+    (ds/save! new-entities)))
+        
+(defpage "/mig1" {}
+  (migration-string-to-text)
+  "OK")
+
 
 (defn entity-to-map
   [e]
@@ -46,7 +81,8 @@
 (defn sheet-entity [e]
   "Transform the sheet entity to the map structure with parsed json"
   (let [em (entity-to-map e)]
-    (let [sheet (reduce #(assoc %1 %2 (if (empty? (em %2))
+    (let [em (unwrap-text em)
+          sheet (reduce #(assoc %1 %2 (if (empty? (em %2))
                                         [] (read-json (em %2))))
                         em
                         [:info :slot :book])]
@@ -150,18 +186,21 @@
   (not (vali/errors? :title :desc :final :info :slot :exit)))
 
 
+
+
 (defn add-sheet [{:keys [title desc final info slot exit]}]
   (let [key (gen-key 5)
         slot-count (count (read-json slot))
         empty-book (json-str (vec-nil slot-count))
         email (get-email)]
     (ds/save! (Sheet. key email title
-                      desc final info slot
-                      empty-book exit (java.util.Date.)))
+                      (Text. desc) (Text. final) (Text. info) (Text. slot)
+                      (Text. empty-book) exit (java.util.Date.)))
     key))
   
 (defn modify-sheet [entity new-values]
-  (ds/save! (merge entity new-values)))
+  (let [new-values (wrap-text new-values)]
+    (ds/save! (merge entity new-values))))
 
     
 ;; Booking
@@ -188,7 +227,8 @@
 
 (defn save-book [entity book]
   (let [book-string (json-str book)]
-    (ds/save! (assoc entity :book book-string))))
+    (ds/save! (merge entity
+                     (wrap-text {:book book-string})))))
 
 
 (defn add-book [entity sheet param slot-idx]
@@ -434,7 +474,7 @@
     (with-permission-required entity
       (base-with-nav-noneditable
         [:h1 "Edit Form"]
-        (signup-form "Edit" entity)))))
+        (signup-form "Edit" (unwrap-text entity))))))
 
 
 (defpage [:post ["/:sheet-key/edit"]] {:keys [sheet-key] :as param}
